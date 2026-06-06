@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+:root {
+  --brand-red: #8B0000;
+  --brand-red-light: #A50000;
+  --brand-gold: #C9A84C;
+  --brand-gold-light: #D4B96A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #fff;
+  color: #1a1a1a;
+}
+
+.font-display {
+  font-family: 'Playfair Display', serif;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-red hover:bg-brand-red-light text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95;
+  }
+
+  .btn-gold {
+    @apply bg-brand-gold hover:bg-brand-gold-light text-black font-semibold px-6 py-3 rounded-lg transition-all duration-200 hover:shadow-lg active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border-2 border-brand-red text-brand-red hover:bg-brand-red hover:text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200;
+  }
+
+  .card-hover {
+    @apply hover:shadow-xl hover:-translate-y-1 transition-all duration-300;
+  }
+
+  .section-title {
+    @apply font-display text-3xl md:text-4xl font-bold text-gray-900;
+  }
+
+  .gold-divider {
+    @apply w-16 h-1 bg-brand-gold rounded mx-auto my-4;
+  }
+}

@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+.next/
+out/
+dist/
+build/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System
+.DS_Store
+Thumbs.db
+*.pem
+
+# Editor
+.vscode/
+.idea/
+
+# Claude / Swarm internals
+.claude-flow/
+.swarm/
+.claude/
+ruvector.db
+
+# Next.js
+next-env.d.ts
+
+# Temp / artifacts
+[p.id
+void
