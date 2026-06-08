@@ -19,18 +19,56 @@ export enum CouponType {
   FREE_SHIPPING = "FREE_SHIPPING",
 }
 
+export enum AffiliateStatus {
+  PENDING = "PENDING",
+  ACTIVE = "ACTIVE",
+  SUSPENDED = "SUSPENDED",
+  BLOCKED = "BLOCKED",
+}
+
+export enum CommissionType {
+  PERCENTAGE = "PERCENTAGE",
+  FIXED = "FIXED",
+}
+
+export enum CommissionStatus {
+  PENDING = "PENDING",
+  AVAILABLE = "AVAILABLE",
+  PAID = "PAID",
+}
+
+export enum WithdrawalStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  PAID = "PAID",
+}
+
+export enum AuditAction {
+  LOGIN = "LOGIN",
+  LOGOUT = "LOGOUT",
+  PRODUCT_CHANGE = "PRODUCT_CHANGE",
+  COMMISSION_CHANGE = "COMMISSION_CHANGE",
+  AFFILIATE_APPROVE = "AFFILIATE_APPROVE",
+  AFFILIATE_SUSPEND = "AFFILIATE_SUSPEND",
+  SALE = "SALE",
+  REFUND = "REFUND",
+  WITHDRAWAL = "WITHDRAWAL",
+  COUPON_CHANGE = "COUPON_CHANGE",
+  ORDER_STATUS_CHANGE = "ORDER_STATUS_CHANGE",
+}
+
 // ─── Base Models ─────────────────────────────────────────────────────────────
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  password: string;
   role: Role;
   phone: string | null;
   cpf: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Address {
@@ -77,8 +115,11 @@ export interface Product {
   composition: string | null;
   warnings: string | null;
   categoryId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  supplierCost: number;
+  defaultAffiliateCommission: number;
+  affiliateCommissionType: CommissionType;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Coupon {
@@ -90,8 +131,10 @@ export interface Coupon {
   maxUses: number | null;
   usedCount: number;
   active: boolean;
-  expiresAt: Date | null;
-  createdAt: Date;
+  expiresAt: string | null;
+  affiliateId: string | null;
+  productId: string | null;
+  createdAt: string;
 }
 
 export interface Order {
@@ -105,8 +148,15 @@ export interface Order {
   paymentLink: string | null;
   whatsappRedirect: boolean;
   addressId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  affiliateId: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  trafficOrigin: string | null;
+  efiPaymentId: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface OrderItem {
@@ -115,6 +165,101 @@ export interface OrderItem {
   productId: string;
   quantity: number;
   price: number;
+}
+
+export interface Affiliate {
+  id: string;
+  userId: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  cpf: string | null;
+  code: string;
+  status: AffiliateStatus;
+  commissionRate: number;
+  commissionType: CommissionType;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AffiliateLink {
+  id: string;
+  affiliateId: string;
+  productId: string | null;
+  code: string;
+  clicks: number;
+  conversions: number;
+  createdAt: string;
+}
+
+export interface Sale {
+  id: string;
+  orderId: string | null;
+  affiliateId: string | null;
+  productId: string;
+  customerId: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  grossAmount: number;
+  supplierAmount: number;
+  netAmount: number;
+  affiliateAmount: number;
+  couponCode: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmContent: string | null;
+  trafficOrigin: string | null;
+  efiPaymentId: string | null;
+  efiStatus: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Commission {
+  id: string;
+  affiliateId: string;
+  saleId: string;
+  amount: number;
+  status: CommissionStatus;
+  availableAt: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface AffiliateWallet {
+  id: string;
+  affiliateId: string;
+  pendingBalance: number;
+  availableBalance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  updatedAt: string;
+}
+
+export interface Withdrawal {
+  id: string;
+  affiliateId: string;
+  walletId: string;
+  amount: number;
+  status: WithdrawalStatus;
+  pixKey: string | null;
+  notes: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string | null;
+  action: AuditAction;
+  entity: string | null;
+  entityId: string | null;
+  details: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
 }
 
 export interface BlogPost {
@@ -127,40 +272,44 @@ export interface BlogPost {
   published: boolean;
   categoryName: string | null;
   authorId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface SEO {
-  id: string;
-  page: string;
-  title: string;
-  description: string;
-  keywords: string | null;
-  ogImage: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ─── Relation Types ───────────────────────────────────────────────────────────
 
-export type ProductWithCategory = Product & {
-  category: Category;
-};
-
-export type OrderItemWithProduct = OrderItem & {
-  product: Product;
-};
-
+export type ProductWithCategory = Product & { category: Category };
+export type OrderItemWithProduct = OrderItem & { product: Product };
 export type OrderWithItems = Order & {
   items: OrderItemWithProduct[];
   user: Pick<User, "id" | "name" | "email" | "phone">;
   address: Address;
 };
-
+export type AffiliateWithWallet = Affiliate & { wallet: AffiliateWallet | null };
+export type SaleWithRelations = Sale & {
+  product: Pick<Product, "id" | "name" | "sku">;
+  affiliate: Pick<Affiliate, "id" | "name" | "code"> | null;
+};
 export type UserPublic = Omit<User, "password">;
 
-export type BlogPostWithAuthor = BlogPost & {
-  author: Pick<User, "id" | "name">;
-};
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  revenueToday: number;
+  revenueWeek: number;
+  revenueMonth: number;
+  revenueTotal: number;
+  avgTicket: number;
+  totalAffiliates: number;
+  totalSales: number;
+  conversionRate: number;
+  topProducts: Array<{ productId: string; name: string; quantity: number; revenue: number }>;
+  salesByDay: Array<{ date: string; count: number; revenue: number }>;
+  salesByProduct: Array<{ productId: string; name: string; revenue: number }>;
+  salesByAffiliate: Array<{ affiliateId: string; name: string; revenue: number }>;
+  revenueByMonth: Array<{ month: string; revenue: number }>;
+  trafficByOrigin: Array<{ origin: string; count: number }>;
+}
 
 // ─── Cart ────────────────────────────────────────────────────────────────────
 
@@ -195,26 +344,8 @@ export interface PaginatedResponse<T = unknown> {
   totalPages: number;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-
 export interface AuthPayload {
   id: string;
   role: Role;
   email: string;
-}
-
-export interface LoginResponse {
-  token: string;
-  user: UserPublic;
-}
-
-// ─── Admin Dashboard ──────────────────────────────────────────────────────────
-
-export interface DashboardStats {
-  totalOrders: number;
-  totalRevenue: number;
-  totalCustomers: number;
-  totalProducts: number;
-  recentOrders: OrderWithItems[];
-  topProducts: Array<ProductWithCategory & { totalSold: number }>;
 }

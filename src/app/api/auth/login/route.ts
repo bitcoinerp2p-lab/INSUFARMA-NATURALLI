@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { comparePassword, signToken } from "@/lib/auth";
+import { writeAuditLog } from "@/lib/admin-auth";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       path: "/",
     });
 
+    void writeAuditLog({ userId: user.id, action: "LOGIN", ip });
     return res;
   } catch (err) {
     console.error("[login]", err);
