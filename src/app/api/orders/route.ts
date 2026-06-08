@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { createPixCharge, getPixQrCode } from "@/lib/efi";
 import { Prisma } from "@prisma/client";
 
 function getAuthPayload(req: NextRequest): { id: string; role: string; email: string } | null {
@@ -167,6 +168,7 @@ export async function POST(req: NextRequest) {
         include: {
           items: { include: { product: true } },
           address: true,
+          user: { select: { id: true, name: true, email: true, phone: true, cpf: true } },
         },
       });
 
@@ -189,7 +191,64 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
-    return NextResponse.json({ order }, { status: 201 });
+    // Generate Pix charge if payment method is pix
+    let pixData: {
+      txid: string;
+      pixCopiaECola: string;
+      qrCodeImage: string | null;
+      expiresAt: string;
+    } | null = null;
+
+    if (paymentMethod === "pix") {
+      const pixKey = process.env.EFI_PIX_KEY ?? "";
+      if (pixKey) {
+        try {
+          const charge = await createPixCharge({
+            valor: totalAmount.toFixed(2),
+            chave: pixKey,
+            expiracaoSegundos: 3600,
+            devedorCpf: order.user.cpf ?? undefined,
+            devedorNome: order.user.name ?? undefined,
+            solicitacaoPagador: `Pedido #${order.id.slice(-8).toUpperCase()} — Insufarma Naturalli`,
+          });
+
+          let qrCodeImage: string | null = null;
+          try {
+            const qrData = await getPixQrCode(charge.loc.id);
+            qrCodeImage = qrData.imagemQrcode;
+          } catch {
+            // QR code image is optional
+          }
+
+          const expiresAt = new Date(Date.now() + 3600 * 1000);
+
+          await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              efiPaymentId: charge.txid,
+              pixQrCode: qrCodeImage,
+              pixCopiaCola: charge.pixCopiaECola,
+              pixExpiresAt: expiresAt,
+              pixLocationId: charge.loc.id,
+            },
+          });
+
+          pixData = {
+            txid: charge.txid,
+            pixCopiaECola: charge.pixCopiaECola,
+            qrCodeImage,
+            expiresAt: expiresAt.toISOString(),
+          };
+        } catch (err) {
+          console.error("[orders] Pix charge generation failed:", err);
+          // Order is created — Pix can be regenerated later
+        }
+      } else {
+        console.warn("[orders] EFI_PIX_KEY not set — Pix charge skipped");
+      }
+    }
+
+    return NextResponse.json({ order, pix: pixData }, { status: 201 });
   } catch (err) {
     console.error("[orders POST]", err);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });

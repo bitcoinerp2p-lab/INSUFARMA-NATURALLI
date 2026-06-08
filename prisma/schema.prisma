@@ -194,6 +194,10 @@ model Order {
   utmContent       String?     @map("utm_content")
   trafficOrigin    String?     @map("traffic_origin")
   efiPaymentId     String?     @map("efi_payment_id")
+  pixQrCode        String?     @map("pix_qr_code")
+  pixCopiaCola     String?     @map("pix_copia_cola")
+  pixExpiresAt     DateTime?   @map("pix_expires_at")
+  pixLocationId    Int?        @map("pix_location_id")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 

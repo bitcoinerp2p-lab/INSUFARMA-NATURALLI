@@ -15,6 +15,8 @@ import {
   Menu,
   X,
   LogOut,
+  ClipboardList,
+  Contact,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +25,8 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/produtos", label: "Produtos", icon: Package },
+  { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList },
+  { href: "/admin/clientes", label: "Clientes", icon: Contact },
   { href: "/admin/afiliados", label: "Afiliados", icon: Users },
   { href: "/admin/cupons", label: "Cupons", icon: Tag },
   { href: "/admin/vendas", label: "Vendas", icon: ShoppingCart },

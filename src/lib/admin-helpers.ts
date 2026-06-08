@@ -69,6 +69,15 @@ export function periodDates(
     from.setDate(from.getDate() - 30);
     return { from, to: now };
   }
+  if (period === "90days") {
+    const from = new Date(startOfToday);
+    from.setDate(from.getDate() - 90);
+    return { from, to: now };
+  }
+  if (period === "year") {
+    const from = new Date(now.getFullYear(), 0, 1);
+    return { from, to: now };
+  }
   return { from: startOfToday, to: now };
 }
 

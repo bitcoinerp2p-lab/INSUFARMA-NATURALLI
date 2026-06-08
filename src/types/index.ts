@@ -155,6 +155,10 @@ export interface Order {
   utmContent: string | null;
   trafficOrigin: string | null;
   efiPaymentId: string | null;
+  pixQrCode: string | null;
+  pixCopiaCola: string | null;
+  pixExpiresAt: string | null;
+  pixLocationId: number | null;
   createdAt: string;
   updatedAt: string;
 }

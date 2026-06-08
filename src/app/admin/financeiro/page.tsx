@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, AlertCircle, Percent, Ticket } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
@@ -18,8 +18,16 @@ interface FinancialData {
   paidCommissions: number;
   pendingCommissions: number;
   margin: number;
+  avgTicket: number;
+  revenueToday: number;
+  revenueWeek: number;
+  revenueMonth: number;
+  pixPendingCount: number;
+  pixExpiredCount: number;
+  pixConversionRate: number;
   monthlyData: { month: string; revenue: number; cost: number }[];
 }
+
 interface Withdrawal {
   id: string;
   affiliateName: string;
@@ -45,8 +53,8 @@ export default function FinanceiroPage() {
     try {
       const params = new URLSearchParams({ period });
       if (period === "custom" && dateFrom && dateTo) {
-        params.set("from", dateFrom);
-        params.set("to", dateTo);
+        params.set("startDate", dateFrom);
+        params.set("endDate", dateTo);
       }
       const [fRes, wRes] = await Promise.all([
         fetch(`${BASE}/api/admin/financial?${params}`),
@@ -77,7 +85,7 @@ export default function FinanceiroPage() {
     }
   }
 
-  const cards = financial ? [
+  const kpiCards = financial ? [
     { label: "Receita Bruta", value: formatCurrency(financial.grossRevenue), color: "text-blue-400", icon: TrendingUp },
     { label: "Custo Fornecedor", value: formatCurrency(financial.supplierCost), color: "text-red-400", icon: TrendingDown },
     { label: "Receita Líquida", value: formatCurrency(financial.netRevenue), color: "text-green-400", icon: TrendingUp },
@@ -86,19 +94,22 @@ export default function FinanceiroPage() {
     { label: "Margem", value: `${financial.margin.toFixed(1)}%`, color: "text-emerald-400", icon: TrendingUp },
   ] : [];
 
+  const windowCards = financial ? [
+    { label: "Hoje", value: formatCurrency(financial.revenueToday), color: "text-blue-300" },
+    { label: "Últimos 7 dias", value: formatCurrency(financial.revenueWeek), color: "text-indigo-300" },
+    { label: "Mês atual", value: formatCurrency(financial.revenueMonth), color: "text-violet-300" },
+    { label: "Ticket médio", value: formatCurrency(financial.avgTicket), color: "text-pink-300" },
+  ] : [];
+
   return (
     <div className="space-y-6 max-w-7xl">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="font-display text-2xl font-bold">Financeiro</h1>
         <div className="flex flex-wrap gap-2">
           {(["30days", "90days", "year", "custom"] as Period[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPeriod(p)}
+            <button key={p} type="button" onClick={() => setPeriod(p)}
               className={cn("px-3 py-1.5 text-xs rounded-lg font-medium transition-colors",
-                period === p ? "bg-brand-red text-white" : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white")}
-            >
+                period === p ? "bg-brand-red text-white" : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white")}>
               {PERIOD_LABELS[p]}
             </button>
           ))}
@@ -116,15 +127,25 @@ export default function FinanceiroPage() {
 
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 10 }).map((_, i) => (
             <div key={i} className="bg-gray-900 rounded-2xl border border-gray-800 p-5 animate-pulse h-24" />
           ))}
         </div>
       ) : (
         <>
+          {/* Revenue windows */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {windowCards.map(({ label, value, color }) => (
+              <div key={label} className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+                <p className="text-gray-400 text-xs uppercase tracking-wide mb-2">{label}</p>
+                <p className={cn("font-bold text-xl", color)}>{value}</p>
+              </div>
+            ))}
+          </div>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {cards.map(({ label, value, color, icon: Icon }) => (
+            {kpiCards.map(({ label, value, color, icon: Icon }) => (
               <div key={label} className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-gray-400 text-xs uppercase tracking-wide">{label}</p>
@@ -133,6 +154,37 @@ export default function FinanceiroPage() {
                 <p className={cn("font-bold text-2xl", color)}>{value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Pix Dashboard */}
+          <div>
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Dashboard Pix (EFI Bank)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-gray-400 text-xs uppercase tracking-wide">Cobranças Pendentes</p>
+                  <Clock size={16} className="text-yellow-400" />
+                </div>
+                <p className="font-bold text-2xl text-yellow-400">{financial?.pixPendingCount ?? 0}</p>
+                <p className="text-gray-500 text-xs mt-1">aguardando pagamento</p>
+              </div>
+              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-gray-400 text-xs uppercase tracking-wide">Cobranças Expiradas</p>
+                  <AlertCircle size={16} className="text-red-400" />
+                </div>
+                <p className="font-bold text-2xl text-red-400">{financial?.pixExpiredCount ?? 0}</p>
+                <p className="text-gray-500 text-xs mt-1">não pagas no prazo</p>
+              </div>
+              <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-gray-400 text-xs uppercase tracking-wide">Conversão Pix</p>
+                  <Percent size={16} className="text-emerald-400" />
+                </div>
+                <p className="font-bold text-2xl text-emerald-400">{(financial?.pixConversionRate ?? 0).toFixed(1)}%</p>
+                <p className="text-gray-500 text-xs mt-1">cobranças pagas</p>
+              </div>
+            </div>
           </div>
 
           {/* Monthly chart */}
@@ -156,7 +208,8 @@ export default function FinanceiroPage() {
 
           {/* Pending withdrawals */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-800">
+            <div className="px-5 py-4 border-b border-gray-800 flex items-center gap-2">
+              <Ticket size={15} className="text-gray-400" />
               <h2 className="text-sm font-semibold text-gray-300">Saques Pendentes</h2>
             </div>
             {withdrawals.length === 0 ? (
@@ -180,18 +233,12 @@ export default function FinanceiroPage() {
                         <td className="px-5 py-3.5 text-right text-gray-400 text-xs">{new Date(w.requestedAt).toLocaleDateString("pt-BR")}</td>
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleWithdrawal(w.id, "approve")}
-                              className="text-xs text-green-400 border border-green-700/50 px-2.5 py-1 rounded-lg hover:bg-green-900/20 transition-colors"
-                            >
+                            <button type="button" onClick={() => handleWithdrawal(w.id, "approve")}
+                              className="text-xs text-green-400 border border-green-700/50 px-2.5 py-1 rounded-lg hover:bg-green-900/20 transition-colors">
                               Aprovar
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleWithdrawal(w.id, "reject")}
-                              className="text-xs text-red-400 border border-red-700/50 px-2.5 py-1 rounded-lg hover:bg-red-900/20 transition-colors"
-                            >
+                            <button type="button" onClick={() => handleWithdrawal(w.id, "reject")}
+                              className="text-xs text-red-400 border border-red-700/50 px-2.5 py-1 rounded-lg hover:bg-red-900/20 transition-colors">
                               Rejeitar
                             </button>
                           </div>
