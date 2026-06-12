@@ -43,35 +43,47 @@ function baseUrl(): string {
 // ─── mTLS Agent — cached per process to avoid disk I/O on every request ───────
 
 let _cachedAgent: https.Agent | null = null;
-let _cachedCertPath = "";
+let _cachedCertKey = "";
 
 function buildAgent(): https.Agent {
+  // Prefer base64 env var (Railway / cloud deployments — files not in git)
+  const certBase64 = isSandbox()
+    ? (process.env.EFI_HOMOLOG_CERT_BASE64 ?? "")
+    : (process.env.EFI_PROD_CERT_BASE64 ?? "");
+
   const certPath = isSandbox()
     ? (process.env.EFI_HOMOLOG_CERT_PATH ?? "")
     : (process.env.EFI_PROD_CERT_PATH ?? "");
 
-  if (_cachedAgent && _cachedCertPath === certPath) {
-    return _cachedAgent;
+  const cacheKey = certBase64 ? `b64:${certBase64.slice(0, 16)}` : certPath;
+  if (_cachedAgent && _cachedCertKey === cacheKey) return _cachedAgent;
+  _cachedCertKey = cacheKey;
+
+  if (certBase64) {
+    try {
+      const pfx = Buffer.from(certBase64, "base64");
+      _cachedAgent = new https.Agent({ pfx, passphrase: "" });
+      console.info("[efi] mTLS loaded from base64 env var");
+      return _cachedAgent;
+    } catch (err) {
+      console.error("[efi] Failed to decode base64 certificate:", err);
+    }
   }
 
-  _cachedCertPath = certPath;
-
-  if (!certPath) {
-    console.warn("[efi] Certificate path not configured — mTLS disabled");
-    _cachedAgent = new https.Agent();
-    return _cachedAgent;
+  if (certPath) {
+    try {
+      const pfx = fs.readFileSync(certPath);
+      _cachedAgent = new https.Agent({ pfx, passphrase: "" });
+      console.info("[efi] mTLS loaded from file:", certPath);
+      return _cachedAgent;
+    } catch (err) {
+      console.error("[efi] Certificate file not found:", certPath, err);
+    }
   }
 
-  try {
-    const pfx = fs.readFileSync(certPath);
-    _cachedAgent = new https.Agent({ pfx, passphrase: "" });
-    console.info("[efi] mTLS certificate loaded:", certPath);
-    return _cachedAgent;
-  } catch (err) {
-    console.error("[efi] Failed to load certificate:", certPath, err);
-    _cachedAgent = new https.Agent();
-    return _cachedAgent;
-  }
+  console.warn("[efi] No certificate configured — mTLS disabled (will fail on production EFI API)");
+  _cachedAgent = new https.Agent();
+  return _cachedAgent;
 }
 
 // ─── Token cache ──────────────────────────────────────────────────────────────
