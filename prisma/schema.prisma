@@ -69,6 +69,13 @@ enum AuditAction {
   ORDER_STATUS_CHANGE
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -418,4 +425,26 @@ model SEO {
   ogImage     String? @map("og_image")
 
   @@map("seo")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  txid      String        @unique
+  orderId   String?       @map("order_id")
+  valor     Decimal       @db.Decimal(10, 2)
+  status    PaymentStatus @default(PENDING)
+  payload   Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("payments")
+}
+
+model WebhookLog {
+  id        String   @id @default(uuid())
+  payload   Json
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_logs")
 }

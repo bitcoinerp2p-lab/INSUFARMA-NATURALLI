@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 import { createPixCharge, getPixQrCode, cancelPixCharge } from "@/lib/efi";
+import { Prisma } from "@prisma/client";
 
 function getAuth(req: NextRequest) {
   try {
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
   if (order.efiPaymentId) {
     try {
       await cancelPixCharge(order.efiPaymentId);
+      await prisma.payment.updateMany({
+        where: { txid: order.efiPaymentId },
+        data: { status: "CANCELLED" },
+      }).catch(() => {});
     } catch {
       // Ignore — charge may already be expired/cancelled
     }
@@ -87,6 +92,23 @@ export async function POST(req: NextRequest) {
         paymentMethod: "pix",
       },
     });
+
+    // Upsert payment record
+    await prisma.payment.upsert({
+      where: { txid: charge.txid },
+      create: {
+        txid: charge.txid,
+        orderId,
+        valor: new Prisma.Decimal(charge.valor.original),
+        status: "PENDING",
+        payload: charge as unknown as import("@prisma/client").Prisma.InputJsonValue,
+      },
+      update: {
+        status: "PENDING",
+        orderId,
+        payload: charge as unknown as import("@prisma/client").Prisma.InputJsonValue,
+      },
+    }).catch((err: unknown) => console.error("[pix/charge] Payment upsert failed:", err));
 
     return NextResponse.json({
       txid: charge.txid,

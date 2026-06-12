@@ -24,6 +24,11 @@ yarn-error.log*
 Thumbs.db
 *.pem
 
+# EFI Bank certificates (never commit)
+certificados/
+*.p12
+*.pfx
+
 # Editor
 .vscode/
 .idea/

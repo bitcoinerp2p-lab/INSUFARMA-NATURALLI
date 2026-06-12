@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createHmac } from "crypto";
 
+// ─── Rate limiting (flood protection — EFI calls very infrequently) ────────────
+const _rateMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_WINDOW = 60_000;
+const RATE_MAX = 200;
+
+function checkRate(ip: string): boolean {
+  const now = Date.now();
+  const entry = _rateMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _rateMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
+    return true;
+  }
+  if (entry.count >= RATE_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 // EFI Bank Pix webhook payload shape
 interface EfiPixItem {
   endToEndId: string;
@@ -24,6 +41,14 @@ interface EfiWebhookPayload {
 
 // EFI retries on non-2xx — always return 200 to avoid duplicate processing
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+  if (!checkRate(ip)) {
+    console.warn("[efi-webhook] Rate limit exceeded for IP:", ip);
+    return NextResponse.json({ ok: false }, { status: 200 });
+  }
+
   const rawBody = await req.text();
   let payload: EfiWebhookPayload;
 
@@ -132,6 +157,12 @@ async function processOrderByEfiId(txid: string, endToEndId: string, valor: stri
     where: { id: order.id },
     data: { status: "PAID" },
   });
+
+  // Update payment record status
+  await prisma.payment.updateMany({
+    where: { txid },
+    data: { status: "PAID" },
+  }).catch((err: unknown) => console.error("[efi-webhook] Payment update failed:", err));
 
   const grossAmount = Number(order.totalAmount);
 

@@ -35,6 +35,13 @@ export async function GET(req: NextRequest) {
       pendingPix,
       expiredPix,
       totalSalesCount,
+      paymentsPaidCount,
+      paymentsPendingCount,
+      paymentsExpiredCount,
+      paymentsCancelledCount,
+      lastWebhooksResult,
+      lastErrorsResult,
+      lastTransactionsResult,
     ] = await Promise.all([
       // Period financial totals
       prisma.sale.aggregate({
@@ -88,6 +95,30 @@ export async function GET(req: NextRequest) {
         },
       }),
       prisma.sale.count({ where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } } }),
+      // Payment status counts
+      prisma.payment.count({ where: { status: "PAID" } }),
+      prisma.payment.count({ where: { status: "PENDING" } }),
+      prisma.payment.count({ where: { status: "EXPIRED" } }),
+      prisma.payment.count({ where: { status: "CANCELLED" } }),
+      // Last webhook events
+      prisma.efiWebhookEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, eventType: true, processed: true, error: true, createdAt: true },
+      }),
+      // Last errored webhook events
+      prisma.efiWebhookEvent.findMany({
+        where: { error: { not: null } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: { id: true, eventType: true, processed: true, error: true, createdAt: true },
+      }),
+      // Last Pix transactions
+      prisma.payment.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, txid: true, valor: true, status: true, orderId: true, createdAt: true },
+      }),
     ]);
 
     const grossRevenue = Number(salesAgg._sum.grossAmount ?? 0);
@@ -142,6 +173,20 @@ export async function GET(req: NextRequest) {
       pixConversionRate: pixConversion,
       monthlyData,
       period: { from, to },
+      paymentsPaid: paymentsPaidCount,
+      paymentsPending: paymentsPendingCount,
+      paymentsExpired: paymentsExpiredCount,
+      paymentsCancelled: paymentsCancelledCount,
+      lastWebhooks: lastWebhooksResult,
+      lastErrors: lastErrorsResult,
+      lastTransactions: lastTransactionsResult.map((tx: { id: string; txid: string; valor: { toNumber: () => number }; status: string; orderId: string | null; createdAt: Date }) => ({
+        id: tx.id,
+        txid: tx.txid,
+        valor: Number(tx.valor),
+        status: tx.status,
+        orderId: tx.orderId,
+        createdAt: tx.createdAt.toISOString(),
+      })),
     });
   } catch (err) {
     console.error("[admin/financial GET]", err);

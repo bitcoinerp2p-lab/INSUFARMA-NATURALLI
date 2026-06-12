@@ -4,12 +4,29 @@ import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Clock, AlertCircle, Percent, Ticket } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, AlertCircle, Percent, Ticket, CheckCircle, XCircle, Activity } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 type Period = "30days" | "90days" | "year" | "custom";
+
+interface WebhookLog {
+  id: string;
+  eventType: string;
+  processed: boolean;
+  error: string | null;
+  createdAt: string;
+}
+
+interface PixTx {
+  id: string;
+  txid: string;
+  valor: number;
+  status: string;
+  orderId: string | null;
+  createdAt: string;
+}
 
 interface FinancialData {
   grossRevenue: number;
@@ -26,6 +43,13 @@ interface FinancialData {
   pixExpiredCount: number;
   pixConversionRate: number;
   monthlyData: { month: string; revenue: number; cost: number }[];
+  paymentsPaid: number;
+  paymentsPending: number;
+  paymentsExpired: number;
+  paymentsCancelled: number;
+  lastWebhooks: WebhookLog[];
+  lastErrors: WebhookLog[];
+  lastTransactions: PixTx[];
 }
 
 interface Withdrawal {
@@ -187,6 +211,27 @@ export default function FinanceiroPage() {
             </div>
           </div>
 
+          {/* Payment status breakdown */}
+          <div>
+            <h2 className="text-sm font-semibold text-gray-300 mb-3">Status de Pagamentos Pix</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Pagos", value: financial?.paymentsPaid ?? 0, color: "text-green-400", icon: CheckCircle },
+                { label: "Pendentes", value: financial?.paymentsPending ?? 0, color: "text-yellow-400", icon: Clock },
+                { label: "Expirados", value: financial?.paymentsExpired ?? 0, color: "text-red-400", icon: AlertCircle },
+                { label: "Cancelados", value: financial?.paymentsCancelled ?? 0, color: "text-gray-400", icon: XCircle },
+              ].map(({ label, value, color, icon: Icon }) => (
+                <div key={label} className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-gray-400 text-xs uppercase tracking-wide">{label}</p>
+                    <Icon size={16} className={color} />
+                  </div>
+                  <p className={cn("font-bold text-2xl", color)}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Monthly chart */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
             <h2 className="text-sm font-semibold text-gray-300 mb-4">Receita vs Custos Mensais</h2>
@@ -204,6 +249,89 @@ export default function FinanceiroPage() {
                 <Bar dataKey="cost" name="Custo" fill="#C9A84C" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* Last Pix Transactions */}
+          <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-800 flex items-center gap-2">
+              <Activity size={15} className="text-gray-400" />
+              <h2 className="text-sm font-semibold text-gray-300">Últimas Transações Pix</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase">
+                    <th className="text-left px-5 py-3">TXID</th>
+                    <th className="text-right px-5 py-3">Valor</th>
+                    <th className="text-right px-5 py-3">Status</th>
+                    <th className="text-right px-5 py-3">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(financial?.lastTransactions ?? []).map((tx, i) => (
+                    <tr key={tx.id} className={cn("hover:bg-gray-800/50", i !== 0 && "border-t border-gray-800/50")}>
+                      <td className="px-5 py-3 text-gray-300 font-mono text-xs">{tx.txid.slice(0, 16)}…</td>
+                      <td className="px-5 py-3 text-right text-white font-semibold">{formatCurrency(tx.valor)}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
+                          tx.status === "PAID" ? "bg-green-900/30 text-green-400" :
+                          tx.status === "PENDING" ? "bg-yellow-900/30 text-yellow-400" :
+                          tx.status === "EXPIRED" ? "bg-red-900/30 text-red-400" :
+                          "bg-gray-800 text-gray-400")}>
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right text-gray-400 text-xs">{new Date(tx.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</td>
+                    </tr>
+                  ))}
+                  {(financial?.lastTransactions ?? []).length === 0 && (
+                    <tr><td colSpan={4} className="px-5 py-10 text-center text-gray-500">Nenhuma transação</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Last Webhook Events */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-300">Últimos Webhooks EFI</h2>
+              </div>
+              <div className="divide-y divide-gray-800/50">
+                {(financial?.lastWebhooks ?? []).map((w) => (
+                  <div key={w.id} className="px-5 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-white">{w.eventType}</p>
+                      <p className="text-xs text-gray-500">{new Date(w.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</p>
+                    </div>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium",
+                      w.processed ? "bg-green-900/30 text-green-400" : "bg-yellow-900/30 text-yellow-400")}>
+                      {w.processed ? "OK" : "Pendente"}
+                    </span>
+                  </div>
+                ))}
+                {(financial?.lastWebhooks ?? []).length === 0 && (
+                  <p className="px-5 py-8 text-center text-gray-500 text-xs">Nenhum webhook recebido</p>
+                )}
+              </div>
+            </div>
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-300">Últimos Erros</h2>
+              </div>
+              <div className="divide-y divide-gray-800/50">
+                {(financial?.lastErrors ?? []).map((w) => (
+                  <div key={w.id} className="px-5 py-3">
+                    <p className="text-xs text-red-400 truncate">{w.error}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{w.eventType} · {new Date(w.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</p>
+                  </div>
+                ))}
+                {(financial?.lastErrors ?? []).length === 0 && (
+                  <p className="px-5 py-8 text-center text-gray-500 text-xs">Nenhum erro registrado</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Pending withdrawals */}

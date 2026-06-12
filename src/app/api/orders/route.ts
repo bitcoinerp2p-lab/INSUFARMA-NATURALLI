@@ -233,6 +233,17 @@ export async function POST(req: NextRequest) {
             },
           });
 
+          // Record payment for dashboard tracking
+          await prisma.payment.create({
+            data: {
+              txid: charge.txid,
+              orderId: order.id,
+              valor: new Prisma.Decimal(totalAmount),
+              status: "PENDING",
+              payload: charge as unknown as import("@prisma/client").Prisma.InputJsonValue,
+            },
+          }).catch((err: unknown) => console.error("[orders] Payment record failed:", err));
+
           pixData = {
             txid: charge.txid,
             pixCopiaECola: charge.pixCopiaECola,

@@ -1,6 +1,5 @@
 import https from "https";
 import fs from "fs";
-import path from "path";
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -31,30 +30,47 @@ export interface CreatePixInput {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
+function isSandbox(): boolean {
+  return process.env.EFI_SANDBOX === "true";
+}
+
 function baseUrl(): string {
-  return process.env.EFI_SANDBOX === "true"
+  return isSandbox()
     ? "https://pix-h.api.efipay.com.br"
     : "https://pix.api.efipay.com.br";
 }
 
+// ─── mTLS Agent — cached per process to avoid disk I/O on every request ───────
+
+let _cachedAgent: https.Agent | null = null;
+let _cachedCertPath = "";
+
 function buildAgent(): https.Agent {
-  const certPath = process.env.EFI_CERTIFICATE_PATH;
-  if (!certPath) return new https.Agent();
+  const certPath = isSandbox()
+    ? (process.env.EFI_HOMOLOG_CERT_PATH ?? "")
+    : (process.env.EFI_PROD_CERT_PATH ?? "");
+
+  if (_cachedAgent && _cachedCertPath === certPath) {
+    return _cachedAgent;
+  }
+
+  _cachedCertPath = certPath;
+
+  if (!certPath) {
+    console.warn("[efi] Certificate path not configured — mTLS disabled");
+    _cachedAgent = new https.Agent();
+    return _cachedAgent;
+  }
 
   try {
-    const ext = path.extname(certPath).toLowerCase();
-    const certFile = fs.readFileSync(certPath);
-
-    if (ext === ".p12" || ext === ".pfx") {
-      return new https.Agent({ pfx: certFile, passphrase: "" });
-    }
-
-    // PEM: expects cert + key in the same file (EFI exports this way)
-    const pem = certFile.toString("utf8");
-    return new https.Agent({ cert: pem, key: pem });
+    const pfx = fs.readFileSync(certPath);
+    _cachedAgent = new https.Agent({ pfx, passphrase: "" });
+    console.info("[efi] mTLS certificate loaded:", certPath);
+    return _cachedAgent;
   } catch (err) {
-    console.error("[efi] Failed to load mTLS certificate:", err);
-    return new https.Agent();
+    console.error("[efi] Failed to load certificate:", certPath, err);
+    _cachedAgent = new https.Agent();
+    return _cachedAgent;
   }
 }
 
