@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
-import { createPixCharge, getPixQrCode } from "@/lib/efi";
+import { createPreference } from "@/lib/mercadopago";
 import { Prisma } from "@prisma/client";
 
 function getAuthPayload(req: NextRequest): { id: string; role: string; email: string } | null {
@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
+  if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+    return NextResponse.json({ error: "Pagamento não disponível no momento." }, { status: 503 });
+  }
+
   try {
     const body = await req.json();
     const parsed = createOrderSchema.safeParse(body);
@@ -70,14 +74,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { addressId, couponCode, paymentMethod, affiliateCode, items } = parsed.data;
-
-    // Validate PIX availability before touching the database
-    if (paymentMethod === "pix" && !process.env.EFI_PIX_KEY) {
-      return NextResponse.json(
-        { error: "Pagamento via PIX não disponível no momento. Escolha outro método de pagamento." },
-        { status: 503 }
-      );
-    }
 
     // Resolve affiliate: explicit code in body → stored referral on user → null
     let resolvedAffiliateId: string | null = null;
@@ -192,8 +188,7 @@ export async function POST(req: NextRequest) {
           },
         },
         include: {
-          items: { include: { product: true } },
-          address: true,
+          items: { include: { product: { select: { name: true } } } },
           user: { select: { id: true, name: true, email: true, phone: true, cpf: true } },
         },
       });
@@ -217,73 +212,53 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
-    // Generate Pix charge if payment method is pix
-    let pixData: {
-      txid: string;
-      pixCopiaECola: string;
-      qrCodeImage: string | null;
-      expiresAt: string;
-    } | null = null;
+    // Create Mercado Pago preference
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const notifUrl = process.env.MP_WEBHOOK_URL ?? `${siteUrl}/api/webhooks/mercadopago`;
 
-    if (paymentMethod === "pix") {
-      const pixKey = process.env.EFI_PIX_KEY ?? "";
-      if (pixKey) {
-        try {
-          const charge = await createPixCharge({
-            valor: totalAmount.toFixed(2),
-            chave: pixKey,
-            expiracaoSegundos: 3600,
-            devedorCpf: order.user.cpf ?? undefined,
-            devedorNome: order.user.name ?? undefined,
-            solicitacaoPagador: `Pedido #${order.id.slice(-8).toUpperCase()} — Insufarma Naturalli`,
-          });
+    try {
+      const preference = await createPreference({
+        items: order.items.map((item) => ({
+          title: item.product.name,
+          quantity: item.quantity,
+          unit_price: Number(item.price),
+          currency_id: "BRL",
+        })),
+        payer: {
+          name: order.user.name,
+          email: order.user.email,
+          ...(order.user.cpf
+            ? { identification: { type: "CPF", number: order.user.cpf.replace(/\D/g, "") } }
+            : {}),
+        },
+        external_reference: order.id,
+        back_urls: {
+          success: `${siteUrl}/checkout/sucesso?pedido=${order.id}`,
+          failure: `${siteUrl}/conta?pedido=${order.id}&erro=1`,
+          pending: `${siteUrl}/conta?pedido=${order.id}&pendente=1`,
+        },
+        auto_return: "approved",
+        notification_url: notifUrl,
+      });
 
-          let qrCodeImage: string | null = null;
-          try {
-            const qrData = await getPixQrCode(charge.loc.id);
-            qrCodeImage = qrData.imagemQrcode;
-          } catch {
-            // QR code image is optional
-          }
+      const checkoutUrl =
+        process.env.MP_SANDBOX === "true"
+          ? preference.sandbox_init_point
+          : preference.init_point;
 
-          const expiresAt = new Date(Date.now() + 3600 * 1000);
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { paymentLink: checkoutUrl, mpPaymentId: preference.id },
+      });
 
-          await prisma.order.update({
-            where: { id: order.id },
-            data: {
-              efiPaymentId: charge.txid,
-              pixQrCode: qrCodeImage,
-              pixCopiaCola: charge.pixCopiaECola,
-              pixExpiresAt: expiresAt,
-              pixLocationId: charge.loc.id,
-            },
-          });
-
-          // Record payment for dashboard tracking
-          await prisma.payment.create({
-            data: {
-              txid: charge.txid,
-              orderId: order.id,
-              valor: new Prisma.Decimal(totalAmount),
-              status: "PENDING",
-              payload: charge as unknown as import("@prisma/client").Prisma.InputJsonValue,
-            },
-          }).catch((err: unknown) => console.error("[orders] Payment record failed:", err));
-
-          pixData = {
-            txid: charge.txid,
-            pixCopiaECola: charge.pixCopiaECola,
-            qrCodeImage,
-            expiresAt: expiresAt.toISOString(),
-          };
-        } catch (err) {
-          console.error("[orders] Pix charge generation failed:", err);
-          // pixData stays null — checkout will retry via /api/pix/charge
-        }
-      }
+      return NextResponse.json({ order, checkoutUrl }, { status: 201 });
+    } catch (mpErr) {
+      console.error("[orders] Mercado Pago preference failed:", mpErr);
+      return NextResponse.json(
+        { error: "Erro ao iniciar pagamento. Tente novamente." },
+        { status: 502 }
+      );
     }
-
-    return NextResponse.json({ order, pix: pixData }, { status: 201 });
   } catch (err) {
     console.error("[orders POST]", err);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });

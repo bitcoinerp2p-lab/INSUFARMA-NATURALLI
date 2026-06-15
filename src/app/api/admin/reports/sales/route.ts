@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     if (format === "csv") {
       const header =
-        "id,date,product,sku,affiliate,customer,grossAmount,supplierAmount,affiliateAmount,netAmount,couponCode,utmSource,utmCampaign,efiStatus";
+        "id,date,product,sku,affiliate,customer,grossAmount,supplierAmount,affiliateAmount,netAmount,couponCode,utmSource,utmCampaign,mpStatus";
       const csvRows = sales.map((s) =>
         [
           s.id,
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           s.couponCode ?? "",
           s.utmSource ?? "",
           s.utmCampaign ?? "",
-          s.efiStatus ?? "",
+          s.mpStatus ?? "",
         ].join(",")
       );
       const csv = [header, ...csvRows].join("\n");

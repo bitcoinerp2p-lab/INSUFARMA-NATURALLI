@@ -89,8 +89,8 @@ export async function POST(req: NextRequest) {
           netAmount,
           affiliateAmount,
           couponCode: order.couponCode ?? null,
-          efiPaymentId: String(paymentId),
-          efiStatus: "paid",
+          mpPaymentId: String(paymentId),
+          mpStatus: "approved",
         },
       });
 

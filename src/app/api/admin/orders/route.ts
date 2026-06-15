@@ -50,10 +50,8 @@ export async function GET(req: NextRequest) {
       city: o.address.city,
       state: o.address.state,
       products: o.items.map((i) => ({ name: i.product.name, sku: i.product.sku, quantity: i.quantity })),
-      txid: o.efiPaymentId,
-      pixCopiaCola: o.pixCopiaCola,
-      pixExpiresAt: o.pixExpiresAt?.toISOString() ?? null,
-      pixExpired: o.status === "PENDING" && !!o.pixExpiresAt && o.pixExpiresAt < new Date(),
+      mpPaymentId: o.mpPaymentId,
+      paymentLink: o.paymentLink,
       couponCode: o.couponCode,
       createdAt: o.createdAt.toISOString(),
     }));

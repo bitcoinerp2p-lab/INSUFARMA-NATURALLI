@@ -202,11 +202,7 @@ model Order {
   utmCampaign      String?     @map("utm_campaign")
   utmContent       String?     @map("utm_content")
   trafficOrigin    String?     @map("traffic_origin")
-  efiPaymentId     String?     @map("efi_payment_id")
-  pixQrCode        String?     @map("pix_qr_code")
-  pixCopiaCola     String?     @map("pix_copia_cola")
-  pixExpiresAt     DateTime?   @map("pix_expires_at")
-  pixLocationId    Int?        @map("pix_location_id")
+  mpPaymentId      String?     @map("mp_payment_id")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 
@@ -315,8 +311,8 @@ model Sale {
   utmCampaign     String?  @map("utm_campaign")
   utmContent      String?  @map("utm_content")
   trafficOrigin   String?  @map("traffic_origin")
-  efiPaymentId    String?  @map("efi_payment_id")
-  efiStatus       String?  @map("efi_status")
+  mpPaymentId     String?  @map("mp_payment_id")
+  mpStatus        String?  @map("mp_status")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -388,17 +384,6 @@ model AuditLog {
   createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("audit_logs")
-}
-
-model EfiWebhookEvent {
-  id        String   @id @default(uuid())
-  eventType String   @map("event_type")
-  payload   Json
-  processed Boolean  @default(false)
-  error     String?
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("efi_webhook_events")
 }
 
 model BlogPost {

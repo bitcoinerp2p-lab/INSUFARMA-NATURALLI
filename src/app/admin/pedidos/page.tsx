@@ -29,10 +29,8 @@ interface Order {
   customerEmail: string;
   customerPhone: string | null;
   products: { name: string; sku: string; quantity: number }[];
-  txid: string | null;
-  pixCopiaCola: string | null;
-  pixExpiresAt: string | null;
-  pixExpired: boolean;
+  mpPaymentId: string | null;
+  paymentLink: string | null;
   couponCode: string | null;
   createdAt: string;
 }
@@ -71,11 +69,6 @@ export default function PedidosPage() {
   }, [period, page, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
-
-  async function copyPix(code: string) {
-    await navigator.clipboard.writeText(code).catch(() => { });
-    toast.success("Pix copiado!");
-  }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -143,9 +136,6 @@ export default function PedidosPage() {
                       <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full border", STATUS_LABELS[o.status]?.color ?? "text-gray-400 border-gray-700")}>
                         {STATUS_LABELS[o.status]?.label ?? o.status}
                       </span>
-                      {o.pixExpired && o.status === "PENDING" && (
-                        <span className="ml-1 text-xs text-red-500 font-medium">expirado</span>
-                      )}
                     </td>
                     <td className="px-5 py-3.5 hidden md:table-cell">
                       <p className="text-white text-xs font-medium">{o.customerName}</p>
@@ -155,13 +145,7 @@ export default function PedidosPage() {
                       {o.products.map((p) => `${p.name} ×${p.quantity}`).join(", ")}
                     </td>
                     <td className="px-5 py-3.5 hidden xl:table-cell">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs text-gray-400 uppercase">{o.paymentMethod ?? "—"}</span>
-                        {o.pixCopiaCola && o.status === "PENDING" && !o.pixExpired && (
-                          <button type="button" onClick={() => copyPix(o.pixCopiaCola!)}
-                            className="text-xs text-brand-red hover:underline">copiar</button>
-                        )}
-                      </div>
+                      <span className="text-xs text-gray-400 uppercase">{o.paymentMethod ?? "—"}</span>
                     </td>
                     <td className="px-5 py-3.5 text-right text-white font-semibold">{formatCurrency(o.totalAmount)}</td>
                     <td className="px-5 py-3.5 text-right text-gray-400 text-xs">{new Date(o.createdAt).toLocaleDateString("pt-BR")}</td>

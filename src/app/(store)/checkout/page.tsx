@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { formatCurrency, formatCEP, cn } from "@/lib/utils";
 import { useCart } from "@/context/CartContext";
 import toast from "react-hot-toast";
@@ -17,159 +16,13 @@ interface Address {
 
 interface User { id: string; name: string; email: string }
 
-interface PixData {
-  txid: string;
-  pixCopiaECola: string;
-  qrCodeImage: string | null;
-  expiresAt: string;
-  orderId: string;
-}
-
 const emptyAddr = { name: "", cep: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" };
 
-function PixPaymentScreen({ pix, onSuccess }: { pix: PixData; onSuccess: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const [status, setStatus] = useState<"pending" | "paid" | "expired">("pending");
-  const [timeLeft, setTimeLeft] = useState(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    const updateTimer = () => {
-      const diff = Math.max(0, Math.floor((new Date(pix.expiresAt).getTime() - Date.now()) / 1000));
-      setTimeLeft(diff);
-      if (diff === 0) setStatus("expired");
-    };
-    updateTimer();
-    const t = setInterval(updateTimer, 1000);
-    return () => clearInterval(t);
-  }, [pix.expiresAt]);
-
-  const poll = useCallback(async () => {
-    if (status !== "pending") return;
-    try {
-      const res = await fetch(`${BASE}/api/pix/status/${pix.orderId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.status === "PAID") {
-        setStatus("paid");
-        if (pollRef.current) clearInterval(pollRef.current);
-        onSuccess();
-      } else if (data.isExpired) {
-        setStatus("expired");
-        if (pollRef.current) clearInterval(pollRef.current);
-      }
-    } catch { /* ignore */ }
-  }, [pix.orderId, status, onSuccess]);
-
-  useEffect(() => {
-    pollRef.current = setInterval(poll, 4000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [poll]);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(pix.pixCopiaECola);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-      toast.success("Código copiado!");
-    } catch {
-      toast.error("Falha ao copiar");
-    }
-  }
-
-  const mins = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-  const secs = String(timeLeft % 60).padStart(2, "0");
-
-  if (status === "paid") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center max-w-sm w-full">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Pagamento Confirmado!</h2>
-          <p className="text-gray-500 text-sm mb-6">Seu pedido foi aprovado. Entraremos em contato em breve.</p>
-          <Link href="/conta" className="btn-primary block">Ver meus pedidos</Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="font-display text-2xl font-bold text-gray-900">Pagar com Pix</h1>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-lg">
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-6">
-          {/* Status */}
-          {status === "expired" ? (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-              <p className="text-red-700 font-semibold text-sm">Cobrança expirada</p>
-              <p className="text-red-500 text-xs mt-1">Volte ao carrinho para tentar novamente.</p>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-sm font-medium text-gray-700">Aguardando pagamento</span>
-              </div>
-              <span className={cn("text-sm font-mono font-bold", timeLeft < 300 ? "text-red-600" : "text-gray-700")}>
-                {mins}:{secs}
-              </span>
-            </div>
-          )}
-
-          {/* QR Code */}
-          {pix.qrCodeImage && (
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-xs text-gray-500 text-center">Escaneie o QR Code com o app do seu banco</p>
-              <div className="border-2 border-gray-100 rounded-xl p-3 inline-block">
-                <Image
-                  src={pix.qrCodeImage}
-                  alt="QR Code Pix"
-                  width={220}
-                  height={220}
-                  className="rounded-lg"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Copia e Cola */}
-          <div>
-            <p className="text-xs text-gray-500 mb-2">Ou use o Pix Copia e Cola:</p>
-            <div className="flex gap-2">
-              <input
-                readOnly
-                value={pix.pixCopiaECola}
-                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-xs text-gray-600 bg-gray-50 font-mono truncate focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={copy}
-                className={cn(
-                  "px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors flex-shrink-0",
-                  copied ? "bg-green-600 text-white" : "bg-brand-red text-white hover:bg-brand-red/90"
-                )}
-              >
-                {copied ? "Copiado!" : "Copiar"}
-              </button>
-            </div>
-          </div>
-
-          <div className="text-center text-xs text-gray-400 space-y-1">
-            <p>🔒 Pagamento processado pela EFI Bank</p>
-            <p>Confirmaçao automática em até 1 minuto após o pagamento</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const PAYMENT_OPTIONS = [
+  { value: "pix", label: "PIX", desc: "Aprovação imediata — escaneie o QR Code no app do banco" },
+  { value: "cartao", label: "Cartão de Crédito", desc: "Parcelamento em até 12x" },
+  { value: "boleto", label: "Boleto Bancário", desc: "Vencimento em 3 dias úteis" },
+];
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -183,7 +36,6 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("pix");
   const [loading, setLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [pixData, setPixData] = useState<PixData | null>(null);
 
   useEffect(() => {
     fetch(`${BASE}/api/auth/me`)
@@ -197,7 +49,7 @@ export default function CheckoutPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadAddresses() {
+  const loadAddresses = useCallback(async () => {
     const r = await fetch(`${BASE}/api/addresses`);
     if (r.ok) {
       const d = await r.json();
@@ -205,7 +57,7 @@ export default function CheckoutPage() {
       const def = (d.addresses ?? []).find((a: Address) => a.isDefault);
       if (def) setSelectedAddr(def.id);
     }
-  }
+  }, []);
 
   async function handleCEP(cep: string) {
     const clean = cep.replace(/\D/g, "");
@@ -263,50 +115,10 @@ export default function CheckoutPage() {
       const d = await r.json();
       if (!r.ok) { toast.error(d.error ?? "Erro ao criar pedido"); return; }
 
-      if (paymentMethod === "pix") {
-        clearCart();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let pixPayload: any = d.pix;
-        if (!pixPayload?.txid) {
-          // PIX generation failed at order creation — try regenerating
-          try {
-            const regenRes = await fetch(`${BASE}/api/pix/charge`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orderId: d.order.id }),
-            });
-            if (regenRes.ok) pixPayload = await regenRes.json();
-          } catch { /* ignore */ }
-        }
-        if (pixPayload?.txid) {
-          setPixData({ ...pixPayload, orderId: d.order.id });
-        } else {
-          toast.error("Não foi possível gerar o PIX. Verifique suas configurações EFI ou tente novamente pelos seus pedidos.");
-          router.push(`/conta?pedido=${d.order.id}`);
-        }
-        return;
-      }
-
-      if (paymentMethod === "cartao") {
-        // Create Mercado Pago preference and redirect
-        const mpRes = await fetch(`${BASE}/api/payments/mercadopago`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: d.order.id }),
-        });
-        const mpData = await mpRes.json();
-        if (!mpRes.ok) {
-          toast.error(mpData.error ?? "Erro ao iniciar pagamento com cartão");
-          return;
-        }
-        clearCart();
-        window.location.href = mpData.checkoutUrl;
-        return;
-      }
-
       clearCart();
-      toast.success("Pedido realizado com sucesso!");
-      router.push(`/conta?pedido=${d.order.id}`);
+      if (typeof window !== "undefined") localStorage.removeItem("affiliate_ref");
+
+      window.location.href = d.checkoutUrl;
     } catch {
       toast.error("Erro ao finalizar pedido");
     } finally {
@@ -314,18 +126,11 @@ export default function CheckoutPage() {
     }
   }
 
-  function handlePixSuccess() {
-    toast.success("Pagamento confirmado! Obrigado pela compra.");
-    router.push("/conta");
-  }
-
   if (authLoading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="animate-pulse text-gray-400">Carregando…</div>
     </div>
   );
-
-  if (pixData) return <PixPaymentScreen pix={pixData} onSuccess={handlePixSuccess} />;
 
   if (items.length === 0) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-4">
@@ -395,12 +200,9 @@ export default function CheckoutPage() {
             {/* Payment */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
               <h2 className="font-semibold text-gray-900 text-lg mb-4">Forma de Pagamento</h2>
+              <p className="text-xs text-gray-400 mb-3">Selecione sua preferência. O pagamento será finalizado com segurança pelo Mercado Pago.</p>
               <div className="space-y-2">
-                {[
-                  { value: "pix", label: "PIX", desc: "Aprovação imediata — desconto disponível" },
-                  { value: "boleto", label: "Boleto Bancário", desc: "Vencimento em 3 dias úteis" },
-                  { value: "cartao", label: "Cartão de Crédito", desc: "Parcelamento em até 10x" },
-                ].map((opt) => (
+                {PAYMENT_OPTIONS.map((opt) => (
                   <label key={opt.value} className={cn("flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors", paymentMethod === opt.value ? "border-brand-red bg-brand-red/5" : "border-gray-100 hover:border-gray-200")}>
                     <input type="radio" name="payment" value={opt.value} checked={paymentMethod === opt.value} onChange={() => setPaymentMethod(opt.value)} className="accent-brand-red" />
                     <div>
@@ -433,11 +235,9 @@ export default function CheckoutPage() {
               </div>
               <button type="button" onClick={placeOrder} disabled={loading || !selectedAddr}
                 className={cn("btn-primary w-full mt-6 py-3.5 text-base", (loading || !selectedAddr) && "opacity-60 cursor-not-allowed")}>
-                {loading ? "Processando…" : paymentMethod === "pix" ? "Gerar QR Code Pix" : paymentMethod === "cartao" ? "Pagar com Cartão" : "Confirmar Pedido"}
+                {loading ? "Processando…" : "Ir para Pagamento"}
               </button>
-              <p className="text-xs text-gray-400 text-center mt-3">
-                {paymentMethod === "cartao" ? "🔒 Pagamento via Mercado Pago" : "🔒 Pagamento 100% seguro via EFI Bank"}
-              </p>
+              <p className="text-xs text-gray-400 text-center mt-3">🔒 Pagamento 100% seguro via Mercado Pago</p>
             </div>
           </div>
         </div>

@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
 
   const { from, to } = periodDates(period, startDate, endDate);
 
-  // Today boundaries
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekStart = new Date(todayStart);
@@ -30,23 +29,18 @@ export async function GET(req: NextRequest) {
       revenueToday,
       revenueWeek,
       revenueMonth,
-      totalOrders,
+      pendingOrders,
       paidOrders,
-      pendingPix,
-      expiredPix,
       totalSalesCount,
       paymentsPaidCount,
       paymentsPendingCount,
       paymentsExpiredCount,
       paymentsCancelledCount,
-      lastWebhooksResult,
-      lastErrorsResult,
       lastTransactionsResult,
     ] = await Promise.all([
-      // Period financial totals
       prisma.sale.aggregate({
         _sum: { grossAmount: true, supplierAmount: true, netAmount: true, affiliateAmount: true },
-        where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: from, lte: to } },
       }),
       prisma.commission.aggregate({
         _sum: { amount: true },
@@ -56,64 +50,29 @@ export async function GET(req: NextRequest) {
         _sum: { amount: true },
         where: { createdAt: { gte: from, lte: to }, status: "PAID" },
       }),
-      // Revenue by time window
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: todayStart }, efiStatus: { not: "cancelled" } },
-      }),
-      prisma.sale.aggregate({
-        _sum: { grossAmount: true },
-        where: { createdAt: { gte: weekStart }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: todayStart } },
       }),
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: monthStart }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: weekStart } },
       }),
-      // Pix conversion stats
+      prisma.sale.aggregate({
+        _sum: { grossAmount: true },
+        where: { createdAt: { gte: monthStart } },
+      }),
       prisma.order.count({
-        where: { paymentMethod: "pix", efiPaymentId: { not: null }, createdAt: { gte: from, lte: to } },
+        where: { status: "PENDING", createdAt: { gte: from, lte: to } },
       }),
       prisma.order.count({
-        where: { paymentMethod: "pix", status: "PAID", createdAt: { gte: from, lte: to } },
+        where: { status: "PAID", createdAt: { gte: from, lte: to } },
       }),
-      // Pending Pix (charge active, not expired)
-      prisma.order.count({
-        where: {
-          paymentMethod: "pix",
-          status: "PENDING",
-          efiPaymentId: { not: null },
-          pixExpiresAt: { gt: now },
-        },
-      }),
-      // Expired Pix (charge expired, still pending)
-      prisma.order.count({
-        where: {
-          paymentMethod: "pix",
-          status: "PENDING",
-          efiPaymentId: { not: null },
-          pixExpiresAt: { lt: now },
-        },
-      }),
-      prisma.sale.count({ where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } } }),
-      // Payment status counts
+      prisma.sale.count({ where: { createdAt: { gte: from, lte: to } } }),
       prisma.payment.count({ where: { status: "PAID" } }),
       prisma.payment.count({ where: { status: "PENDING" } }),
       prisma.payment.count({ where: { status: "EXPIRED" } }),
       prisma.payment.count({ where: { status: "CANCELLED" } }),
-      // Last webhook events
-      prisma.efiWebhookEvent.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { id: true, eventType: true, processed: true, error: true, createdAt: true },
-      }),
-      // Last errored webhook events
-      prisma.efiWebhookEvent.findMany({
-        where: { error: { not: null } },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { id: true, eventType: true, processed: true, error: true, createdAt: true },
-      }),
-      // Last Pix transactions
       prisma.payment.findMany({
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -129,17 +88,16 @@ export async function GET(req: NextRequest) {
     const pendingCommissions = totalAffiliateCommissions - paidCommissions;
     const profitMargin = grossRevenue > 0 ? (netRevenue / grossRevenue) * 100 : 0;
     const avgTicket = totalSalesCount > 0 ? grossRevenue / totalSalesCount : 0;
-    const pixConversion = totalOrders > 0 ? (paidOrders / totalOrders) * 100 : 0;
+    const conversionRate = (pendingOrders + paidOrders) > 0 ? (paidOrders / (pendingOrders + paidOrders)) * 100 : 0;
 
     // Monthly data for chart (last 6 months)
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const monthlySales = await prisma.sale.groupBy({
       by: ["createdAt"],
       _sum: { grossAmount: true, supplierAmount: true },
-      where: { createdAt: { gte: sixMonthsAgo }, efiStatus: { not: "cancelled" } },
+      where: { createdAt: { gte: sixMonthsAgo } },
     });
 
-    // Aggregate by month
     const monthlyMap = new Map<string, { revenue: number; cost: number }>();
     for (const s of monthlySales) {
       const key = `${s.createdAt.getFullYear()}-${String(s.createdAt.getMonth() + 1).padStart(2, "0")}`;
@@ -168,18 +126,16 @@ export async function GET(req: NextRequest) {
       revenueToday: Number(revenueToday._sum.grossAmount ?? 0),
       revenueWeek: Number(revenueWeek._sum.grossAmount ?? 0),
       revenueMonth: Number(revenueMonth._sum.grossAmount ?? 0),
-      pixPendingCount: pendingPix,
-      pixExpiredCount: expiredPix,
-      pixConversionRate: pixConversion,
+      pendingOrdersCount: pendingOrders,
+      paidOrdersCount: paidOrders,
+      conversionRate,
       monthlyData,
       period: { from, to },
       paymentsPaid: paymentsPaidCount,
       paymentsPending: paymentsPendingCount,
       paymentsExpired: paymentsExpiredCount,
       paymentsCancelled: paymentsCancelledCount,
-      lastWebhooks: lastWebhooksResult,
-      lastErrors: lastErrorsResult,
-      lastTransactions: lastTransactionsResult.map((tx: { id: string; txid: string; valor: { toNumber: () => number }; status: string; orderId: string | null; createdAt: Date }) => ({
+      lastTransactions: lastTransactionsResult.map((tx) => ({
         id: tx.id,
         txid: tx.txid,
         valor: Number(tx.valor),

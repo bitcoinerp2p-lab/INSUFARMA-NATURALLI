@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const sales = await prisma.sale.findMany({
-      where: { createdAt: { gte: from }, efiStatus: { not: "cancelled" } },
+      where: { createdAt: { gte: from } },
       select: { createdAt: true, grossAmount: true, netAmount: true },
     });
 

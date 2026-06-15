@@ -40,20 +40,19 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: startOfToday }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: startOfToday } },
       }),
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: startOfWeek }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: startOfWeek } },
       }),
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: startOfMonth }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: startOfMonth } },
       }),
       prisma.sale.aggregate({
         _sum: { grossAmount: true },
         _count: true,
-        where: { efiStatus: { not: "cancelled" } },
       }),
       prisma.affiliate.count({ where: { status: "ACTIVE" } }),
       prisma.sale.count({ where: { createdAt: { gte: from, lte: to } } }),
@@ -62,19 +61,19 @@ export async function GET(req: NextRequest) {
         by: ["productId"],
         _sum: { grossAmount: true },
         _count: true,
-        where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: from, lte: to } },
         orderBy: { _sum: { grossAmount: "desc" } },
         take: 5,
       }),
       prisma.sale.findMany({
-        where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: from, lte: to } },
         select: { createdAt: true, grossAmount: true },
         orderBy: { createdAt: "asc" },
       }),
       prisma.sale.groupBy({
         by: ["productId"],
         _sum: { grossAmount: true },
-        where: { createdAt: { gte: from, lte: to }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: from, lte: to } },
         orderBy: { _sum: { grossAmount: "desc" } },
         take: 10,
       }),
@@ -83,14 +82,13 @@ export async function GET(req: NextRequest) {
         _sum: { grossAmount: true },
         where: {
           createdAt: { gte: from, lte: to },
-          efiStatus: { not: "cancelled" },
           affiliateId: { not: null },
         },
         orderBy: { _sum: { grossAmount: "desc" } },
         take: 10,
       }),
       prisma.sale.findMany({
-        where: { createdAt: { gte: twelveMonthsAgo }, efiStatus: { not: "cancelled" } },
+        where: { createdAt: { gte: twelveMonthsAgo } },
         select: { createdAt: true, grossAmount: true },
       }),
       prisma.affiliateClick.groupBy({

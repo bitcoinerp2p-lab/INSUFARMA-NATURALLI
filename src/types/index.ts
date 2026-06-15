@@ -154,11 +154,7 @@ export interface Order {
   utmCampaign: string | null;
   utmContent: string | null;
   trafficOrigin: string | null;
-  efiPaymentId: string | null;
-  pixQrCode: string | null;
-  pixCopiaCola: string | null;
-  pixExpiresAt: string | null;
-  pixLocationId: number | null;
+  mpPaymentId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -214,8 +210,8 @@ export interface Sale {
   utmCampaign: string | null;
   utmContent: string | null;
   trafficOrigin: string | null;
-  efiPaymentId: string | null;
-  efiStatus: string | null;
+  mpPaymentId: string | null;
+  mpStatus: string | null;
   createdAt: string;
   updatedAt: string;
 }
