@@ -18,12 +18,6 @@ interface User { id: string; name: string; email: string }
 
 const emptyAddr = { name: "", cep: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" };
 
-const PAYMENT_OPTIONS = [
-  { value: "pix", label: "PIX", desc: "Aprovação imediata — escaneie o QR Code no app do banco" },
-  { value: "cartao", label: "Cartão de Crédito", desc: "Parcelamento em até 12x" },
-  { value: "boleto", label: "Boleto Bancário", desc: "Vencimento em 3 dias úteis" },
-];
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, coupon, subtotal, couponDiscount, shipping, total, clearCart } = useCart();
@@ -33,7 +27,6 @@ export default function CheckoutPage() {
   const [selectedAddr, setSelectedAddr] = useState<string>("");
   const [showNewAddr, setShowNewAddr] = useState(false);
   const [newAddr, setNewAddr] = useState(emptyAddr);
-  const [paymentMethod, setPaymentMethod] = useState("pix");
   const [loading, setLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -107,7 +100,6 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           addressId: selectedAddr,
           couponCode: coupon?.code,
-          paymentMethod,
           affiliateCode,
           items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
         }),
@@ -199,17 +191,21 @@ export default function CheckoutPage() {
 
             {/* Payment */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
-              <h2 className="font-semibold text-gray-900 text-lg mb-4">Forma de Pagamento</h2>
-              <p className="text-xs text-gray-400 mb-3">Selecione sua preferência. O pagamento será finalizado com segurança pelo Mercado Pago.</p>
-              <div className="space-y-2">
-                {PAYMENT_OPTIONS.map((opt) => (
-                  <label key={opt.value} className={cn("flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors", paymentMethod === opt.value ? "border-brand-red bg-brand-red/5" : "border-gray-100 hover:border-gray-200")}>
-                    <input type="radio" name="payment" value={opt.value} checked={paymentMethod === opt.value} onChange={() => setPaymentMethod(opt.value)} className="accent-brand-red" />
+              <h2 className="font-semibold text-gray-900 text-lg mb-4">Pagamento</h2>
+              <p className="text-sm text-gray-500 mb-4">Ao clicar em <strong>Ir para Pagamento</strong>, você será redirecionado para o ambiente seguro do Mercado Pago, onde poderá escolher a forma de pagamento.</p>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { label: "PIX", icon: "⚡", desc: "Aprovação imediata" },
+                  { label: "Cartão de Crédito", icon: "💳", desc: "Até 12x" },
+                  { label: "Boleto", icon: "🏦", desc: "3 dias úteis" },
+                ].map((m) => (
+                  <div key={m.label} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
+                    <span className="text-base">{m.icon}</span>
                     <div>
-                      <p className="font-semibold text-gray-900 text-sm">{opt.label}</p>
-                      <p className="text-gray-500 text-xs">{opt.desc}</p>
+                      <p className="text-xs font-semibold text-gray-800">{m.label}</p>
+                      <p className="text-xs text-gray-400">{m.desc}</p>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
