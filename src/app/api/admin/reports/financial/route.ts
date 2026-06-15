@@ -59,11 +59,18 @@ export async function GET(req: NextRequest) {
       byMonth.set(key, existing);
     }
 
-    const report = Array.from(byMonth.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, data]) => ({ month, ...data }));
+    const rows = Array.from(byMonth.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([month, data]) => {
+        const gross = data.grossRevenue;
+        const cost = gross - data.netRevenue;
+        const commissions = data.commissionsPaid + data.commissionsPending;
+        const net = data.netRevenue;
+        const margin = gross > 0 ? (net / gross) * 100 : 0;
+        return { month, gross, cost, net, commissions, margin };
+      });
 
-    return NextResponse.json({ report });
+    return NextResponse.json({ rows });
   } catch (err) {
     console.error("[admin/reports/financial GET]", err);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });

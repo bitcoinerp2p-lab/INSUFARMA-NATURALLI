@@ -8,6 +8,7 @@ const JWT_SECRET = new TextEncoder().encode(
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Admin protection
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
     const token = req.cookies.get("auth-token")?.value;
     if (!token) return NextResponse.redirect(new URL("/admin/login", req.url));
@@ -24,7 +25,24 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Affiliate area protection
+  if (pathname.startsWith("/afiliado/dashboard")) {
+    const token = req.cookies.get("affiliate-token")?.value;
+    if (!token) return NextResponse.redirect(new URL("/afiliado/login", req.url));
+
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      if (!payload.affiliateId) {
+        return NextResponse.redirect(new URL("/afiliado/login", req.url));
+      }
+    } catch {
+      const res = NextResponse.redirect(new URL("/afiliado/login", req.url));
+      res.cookies.delete("affiliate-token");
+      return res;
+    }
+  }
+
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/admin/:path*"] };
+export const config = { matcher: ["/admin/:path*", "/afiliado/dashboard/:path*", "/afiliado/dashboard"] };

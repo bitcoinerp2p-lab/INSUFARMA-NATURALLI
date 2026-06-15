@@ -242,6 +242,12 @@ export default function CheckoutPage() {
     if (!selectedAddr) { toast.error("Selecione um endereço de entrega"); return; }
     if (items.length === 0) { toast.error("Carrinho vazio"); return; }
     setLoading(true);
+
+    const affiliateCode =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("affiliate_ref") ?? undefined)
+        : undefined;
+
     try {
       const r = await fetch(`${BASE}/api/orders`, {
         method: "POST",
@@ -250,20 +256,39 @@ export default function CheckoutPage() {
           addressId: selectedAddr,
           couponCode: coupon?.code,
           paymentMethod,
+          affiliateCode,
           items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
         }),
       });
       const d = await r.json();
       if (!r.ok) { toast.error(d.error ?? "Erro ao criar pedido"); return; }
 
-      clearCart();
-
       if (paymentMethod === "pix" && d.pix) {
+        clearCart();
         setPixData({ ...d.pix, orderId: d.order.id });
-      } else {
-        toast.success("Pedido realizado com sucesso!");
-        router.push(`/conta?pedido=${d.order.id}`);
+        return;
       }
+
+      if (paymentMethod === "cartao") {
+        // Create Mercado Pago preference and redirect
+        const mpRes = await fetch(`${BASE}/api/payments/mercadopago`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: d.order.id }),
+        });
+        const mpData = await mpRes.json();
+        if (!mpRes.ok) {
+          toast.error(mpData.error ?? "Erro ao iniciar pagamento com cartão");
+          return;
+        }
+        clearCart();
+        window.location.href = mpData.checkoutUrl;
+        return;
+      }
+
+      clearCart();
+      toast.success("Pedido realizado com sucesso!");
+      router.push(`/conta?pedido=${d.order.id}`);
     } catch {
       toast.error("Erro ao finalizar pedido");
     } finally {
@@ -390,9 +415,11 @@ export default function CheckoutPage() {
               </div>
               <button type="button" onClick={placeOrder} disabled={loading || !selectedAddr}
                 className={cn("btn-primary w-full mt-6 py-3.5 text-base", (loading || !selectedAddr) && "opacity-60 cursor-not-allowed")}>
-                {loading ? "Processando…" : paymentMethod === "pix" ? "Gerar QR Code Pix" : "Confirmar Pedido"}
+                {loading ? "Processando…" : paymentMethod === "pix" ? "Gerar QR Code Pix" : paymentMethod === "cartao" ? "Pagar com Cartão" : "Confirmar Pedido"}
               </button>
-              <p className="text-xs text-gray-400 text-center mt-3">🔒 Pagamento 100% seguro via EFI Bank</p>
+              <p className="text-xs text-gray-400 text-center mt-3">
+                {paymentMethod === "cartao" ? "🔒 Pagamento via Mercado Pago" : "🔒 Pagamento 100% seguro via EFI Bank"}
+              </p>
             </div>
           </div>
         </div>

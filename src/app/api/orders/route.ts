@@ -19,6 +19,7 @@ const createOrderSchema = z.object({
   addressId: z.string().uuid("Endereço inválido"),
   couponCode: z.string().optional(),
   paymentMethod: z.string().optional(),
+  affiliateCode: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -68,7 +69,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { addressId, couponCode, paymentMethod, items } = parsed.data;
+    const { addressId, couponCode, paymentMethod, affiliateCode, items } = parsed.data;
+
+    // Resolve affiliate: explicit code in body → stored referral on user → null
+    let resolvedAffiliateId: string | null = null;
+    if (affiliateCode) {
+      const aff = await prisma.affiliate.findUnique({
+        where: { code: affiliateCode.toUpperCase(), status: "ACTIVE" },
+      });
+      if (aff) resolvedAffiliateId = aff.id;
+    }
+    if (!resolvedAffiliateId) {
+      const usr = await prisma.user.findUnique({
+        where: { id: auth.id },
+        select: { referredByAffiliateId: true },
+      });
+      resolvedAffiliateId = usr?.referredByAffiliateId ?? null;
+    }
 
     // Validate products and stock
     const productIds = items.map((i) => i.productId);
@@ -153,6 +170,7 @@ export async function POST(req: NextRequest) {
           discountAmount: new Prisma.Decimal(discountAmount),
           couponCode: resolvedCouponCode,
           paymentMethod: paymentMethod ?? null,
+          affiliateId: resolvedAffiliateId,
           items: {
             create: items.map((item) => {
               const product = productMap.get(item.productId)!;

@@ -9,6 +9,7 @@ const registerSchema = z.object({
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   phone: z.string().optional(),
   cpf: z.string().optional(),
+  affiliateCode: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password, phone, cpf } = parsed.data;
+    const { name, email, password, phone, cpf, affiliateCode } = parsed.data;
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -30,6 +31,14 @@ export async function POST(req: NextRequest) {
         { error: "Este e-mail já está cadastrado" },
         { status: 409 }
       );
+    }
+
+    let referredByAffiliateId: string | null = null;
+    if (affiliateCode) {
+      const affiliate = await prisma.affiliate.findUnique({
+        where: { code: affiliateCode.toUpperCase(), status: "ACTIVE" },
+      });
+      if (affiliate) referredByAffiliateId = affiliate.id;
     }
 
     const hashedPassword = await hashPassword(password);
@@ -42,6 +51,7 @@ export async function POST(req: NextRequest) {
         role: "CUSTOMER",
         phone: phone ?? null,
         cpf: cpf ?? null,
+        referredByAffiliateId,
       },
     });
 

@@ -60,17 +60,22 @@ export default function AfiliadoDetailPage() {
       const res = await fetch(`${BASE}/api/admin/affiliates/${id}`);
       if (!res.ok) throw new Error("Afiliado não encontrado");
       const d = await res.json();
-      setAffiliate(d);
-      setForm({ name: d.name, email: d.email, phone: d.phone ?? "", cpf: d.cpf ?? "", commissionRate: String(d.commissionRate) });
+      const aff = d.affiliate ?? d;
+      setAffiliate({
+        ...aff,
+        balance: Number(aff.wallet?.availableBalance ?? 0),
+        pendingBalance: Number(aff.wallet?.pendingBalance ?? 0),
+      });
+      setForm({ name: aff.name, email: aff.email, phone: aff.phone ?? "", cpf: aff.cpf ?? "", commissionRate: String(aff.commissionRate) });
       // load sub-data
       const [lRes, wRes, sRes] = await Promise.all([
         fetch(`${BASE}/api/admin/affiliates/${id}/links`),
         fetch(`${BASE}/api/admin/affiliates/${id}/withdrawals`),
         fetch(`${BASE}/api/admin/affiliates/${id}/sales`),
       ]);
-      if (lRes.ok) { const ld = await lRes.json(); setLinks(ld.links ?? ld ?? []); }
-      if (wRes.ok) { const wd = await wRes.json(); setWithdrawals(wd.withdrawals ?? wd ?? []); }
-      if (sRes.ok) { const sd = await sRes.json(); setSales(sd.sales ?? sd ?? []); }
+      if (lRes.ok) { const ld = await lRes.json(); setLinks(ld.links ?? []); }
+      if (wRes.ok) { const wd = await wRes.json(); setWithdrawals(wd.withdrawals ?? []); }
+      if (sRes.ok) { const sd = await sRes.json(); setSales(sd.sales ?? []); }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao carregar afiliado");
     } finally {
@@ -116,7 +121,10 @@ export default function AfiliadoDetailPage() {
   async function approveWithdrawal(wid: string) {
     try {
       const res = await fetch(`${BASE}/api/admin/withdrawals/${wid}/approve`, { method: "POST" });
-      if (!res.ok) throw new Error("Falha ao aprovar saque");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "Falha ao aprovar saque");
+      }
       setWithdrawals((prev) => prev.map((w) => w.id === wid ? { ...w, status: "APPROVED" } : w));
       toast.success("Saque aprovado!");
     } catch (e: unknown) {

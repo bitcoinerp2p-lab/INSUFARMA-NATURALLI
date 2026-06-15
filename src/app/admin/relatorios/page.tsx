@@ -43,13 +43,13 @@ export default function RelatoriosPage() {
       const params = buildParams();
       if (tab === "vendas") {
         const res = await fetch(`${BASE}/api/admin/reports/sales?${params}`);
-        if (res.ok) { const d = await res.json(); setSalesData(d.rows ?? d ?? []); }
+        if (res.ok) { const d = await res.json(); setSalesData(d.rows ?? []); }
       } else if (tab === "financeiro") {
         const res = await fetch(`${BASE}/api/admin/reports/financial?${params}`);
-        if (res.ok) { const d = await res.json(); setFinancialData(d.rows ?? d ?? []); }
+        if (res.ok) { const d = await res.json(); setFinancialData(d.rows ?? []); }
       } else {
         const res = await fetch(`${BASE}/api/admin/reports/affiliates?${params}`);
-        if (res.ok) { const d = await res.json(); setAffiliatesData(d.rows ?? d ?? []); }
+        if (res.ok) { const d = await res.json(); setAffiliatesData(d.rows ?? []); }
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro ao carregar relatório");

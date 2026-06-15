@@ -79,20 +79,22 @@ enum PaymentStatus {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
-  id        String    @id @default(uuid())
-  name      String
-  email     String    @unique
-  password  String
-  role      Role      @default(CUSTOMER)
-  phone     String?
-  cpf       String?   @unique
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  name                  String
+  email                 String    @unique
+  password              String
+  role                  Role      @default(CUSTOMER)
+  phone                 String?
+  cpf                   String?   @unique
+  referredByAffiliateId String?   @map("referred_by_affiliate_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  orders    Order[]
-  addresses Address[]
-  blogPosts BlogPost[]
-  affiliate Affiliate?
+  orders              Order[]
+  addresses           Address[]
+  blogPosts           BlogPost[]
+  affiliate           Affiliate?
+  referredByAffiliate Affiliate? @relation("ReferredUsers", fields: [referredByAffiliateId], references: [id])
 
   @@map("users")
 }
@@ -243,15 +245,16 @@ model Affiliate {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  user        User?            @relation(fields: [userId], references: [id])
-  links       AffiliateLink[]
-  clicks      AffiliateClick[]
-  sales       Sale[]
-  commissions Commission[]
-  wallet      AffiliateWallet?
-  withdrawals Withdrawal[]
-  coupons     Coupon[]
-  orders      Order[]
+  user          User?            @relation(fields: [userId], references: [id])
+  referredUsers User[]           @relation("ReferredUsers")
+  links         AffiliateLink[]
+  clicks        AffiliateClick[]
+  sales         Sale[]
+  commissions   Commission[]
+  wallet        AffiliateWallet?
+  withdrawals   Withdrawal[]
+  coupons       Coupon[]
+  orders        Order[]
 
   @@map("affiliates")
 }

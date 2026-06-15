@@ -38,6 +38,11 @@ function CadastroForm() {
     e.preventDefault();
     if (form.password.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
     setLoading(true);
+
+    const affiliateCode =
+      searchParams.get("ref") ??
+      (typeof window !== "undefined" ? localStorage.getItem("affiliate_ref") ?? undefined : undefined);
+
     try {
       const res = await fetch(`${BASE}/api/auth/register`, {
         method: "POST",
@@ -48,10 +53,12 @@ function CadastroForm() {
           password: form.password,
           phone: form.phone || undefined,
           cpf: form.cpf.replace(/\D/g, "") || undefined,
+          affiliateCode: affiliateCode || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Erro ao criar conta"); return; }
+      if (typeof window !== "undefined") localStorage.removeItem("affiliate_ref");
       toast.success("Conta criada com sucesso!");
       router.push(redirect);
       router.refresh();

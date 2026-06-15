@@ -98,6 +98,62 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const admin = getAdminPayload(req);
+  if (!admin) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
+  try {
+    const body = await req.json();
+    const statusSchema = z.object({
+      status: z.enum(["PENDING", "ACTIVE", "SUSPENDED", "BLOCKED"]),
+    });
+    const parsed = statusSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Status inválido" }, { status: 400 });
+    }
+
+    const { status } = parsed.data;
+
+    const affiliate = await prisma.$transaction(async (tx) => {
+      const a = await tx.affiliate.update({
+        where: { id: params.id },
+        data: { status },
+      });
+
+      if (status === "ACTIVE") {
+        const existing = await tx.affiliateWallet.findUnique({
+          where: { affiliateId: a.id },
+        });
+        if (!existing) {
+          await tx.affiliateWallet.create({ data: { affiliateId: a.id } });
+        }
+      }
+
+      return a;
+    });
+
+    const auditAction = status === "ACTIVE" ? "AFFILIATE_APPROVE" : "AFFILIATE_SUSPEND";
+    await writeAudit({
+      userId: admin.id,
+      action: auditAction,
+      entity: "Affiliate",
+      entityId: affiliate.id,
+      details: { newStatus: status },
+      ip: getIp(req),
+    });
+
+    return NextResponse.json({ affiliate });
+  } catch (err) {
+    console.error("[admin/affiliates/[id] PATCH]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }

@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "30days";
-  const startDate = searchParams.get("startDate") ?? undefined;
-  const endDate = searchParams.get("endDate") ?? undefined;
+  const fromParam = searchParams.get("from") ?? searchParams.get("startDate") ?? undefined;
+  const toParam = searchParams.get("to") ?? searchParams.get("endDate") ?? undefined;
 
-  const { from, to } = periodDates(period, startDate, endDate);
+  const { from, to } = periodDates(period, fromParam, toParam);
 
   try {
     const affiliates = await prisma.affiliate.findMany({
@@ -48,14 +48,15 @@ export async function GET(req: NextRequest) {
         email: a.email,
         clicks,
         sales,
-        conversions: sales,
         conversionRate,
         revenue,
-        commissions,
+        commission: commissions,
       };
     });
 
-    return NextResponse.json({ report, period: { from, to } });
+    const rows = report.sort((a, b) => b.revenue - a.revenue);
+
+    return NextResponse.json({ rows, period: { from, to } });
   } catch (err) {
     console.error("[admin/reports/affiliates GET]", err);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });

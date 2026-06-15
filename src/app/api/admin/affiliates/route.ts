@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [total, affiliates] = await Promise.all([
+    const [total, rawAffiliates] = await Promise.all([
       prisma.affiliate.count({ where }),
       prisma.affiliate.findMany({
         where,
@@ -45,6 +45,12 @@ export async function GET(req: NextRequest) {
         include: { wallet: true },
       }),
     ]);
+
+    const affiliates = rawAffiliates.map((a) => ({
+      ...a,
+      balance: Number(a.wallet?.availableBalance ?? 0),
+      pendingBalance: Number(a.wallet?.pendingBalance ?? 0),
+    }));
 
     return NextResponse.json({ affiliates, total, page, limit });
   } catch (err) {
