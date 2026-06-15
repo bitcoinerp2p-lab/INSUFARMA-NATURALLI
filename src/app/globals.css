@@ -53,4 +53,8 @@ body {
   .gold-divider {
     @apply w-16 h-1 bg-brand-gold rounded mx-auto my-4;
   }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red transition-colors placeholder:text-gray-400;
+  }
 }
