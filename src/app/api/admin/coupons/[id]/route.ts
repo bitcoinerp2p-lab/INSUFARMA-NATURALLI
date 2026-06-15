@@ -82,6 +82,39 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const admin = getAdminPayload(req);
+  if (!admin) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const parsed = z.object({ active: z.boolean() }).safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
+
+  try {
+    const coupon = await prisma.coupon.update({
+      where: { id: params.id },
+      data: { active: parsed.data.active },
+    });
+
+    await writeAudit({
+      userId: admin.id,
+      action: "COUPON_CHANGE",
+      entity: "Coupon",
+      entityId: coupon.id,
+      details: { active: parsed.data.active },
+      ip: getIp(req),
+    });
+
+    return NextResponse.json({ coupon });
+  } catch (err) {
+    console.error("[admin/coupons/[id] PATCH]", err);
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }

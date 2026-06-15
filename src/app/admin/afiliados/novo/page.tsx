@@ -19,6 +19,7 @@ export default function NovoAfiliadoPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     cpf: "",
     commissionRate: "10",
@@ -88,6 +89,19 @@ export default function NovoAfiliadoPage() {
                 required
                 placeholder="joao@email.com"
                 className={FIELD_CLASS}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLASS}>Senha de Acesso *</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => set("password", e.target.value)}
+                required
+                minLength={6}
+                placeholder="Mínimo 6 caracteres"
+                className={FIELD_CLASS}
+                autoComplete="new-password"
               />
             </div>
             <div>

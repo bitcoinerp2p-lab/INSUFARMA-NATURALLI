@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getAdminPayload, writeAudit, getIp, randomCode } from "@/lib/admin-helpers";
+import { hashPassword } from "@/lib/auth";
 
 const createSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
+  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
   phone: z.string().optional(),
   cpf: z.string().optional(),
   commissionRate: z.number().positive().default(10),
@@ -72,7 +74,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
     }
 
-    const { name, email, phone, cpf, commissionRate, commissionType } = parsed.data;
+    const { name, email, password, phone, cpf, commissionRate, commissionType } = parsed.data;
+
+    const [existingUser, existingAffiliate] = await Promise.all([
+      prisma.user.findUnique({ where: { email } }),
+      prisma.affiliate.findUnique({ where: { email } }),
+    ]);
+    if (existingAffiliate) {
+      return NextResponse.json({ error: "Este e-mail já está cadastrado como afiliado" }, { status: 409 });
+    }
 
     let code: string;
     let attempts = 0;
@@ -84,9 +94,19 @@ export async function POST(req: NextRequest) {
       }
     } while (await prisma.affiliate.findUnique({ where: { code } }));
 
+    const hashedPassword = await hashPassword(password);
+
     const affiliate = await prisma.$transaction(async (tx) => {
+      const user = existingUser ?? await tx.user.create({
+        data: { name, email, password: hashedPassword, role: "CUSTOMER", phone: phone ?? null, cpf: cpf ?? null },
+      });
+
+      if (existingUser) {
+        await tx.user.update({ where: { id: existingUser.id }, data: { password: hashedPassword } });
+      }
+
       const a = await tx.affiliate.create({
-        data: { name, email, phone, cpf, code, commissionRate, commissionType },
+        data: { userId: user.id, name, email, phone, cpf, code, commissionRate, commissionType, status: "ACTIVE" },
       });
       await tx.affiliateWallet.create({ data: { affiliateId: a.id } });
       return a;

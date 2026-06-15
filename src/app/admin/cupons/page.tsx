@@ -10,8 +10,9 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 interface Coupon {
   id: string;
   code: string;
-  type: "PERCENTAGE" | "FIXED";
+  type: "PERCENTAGE" | "FIXED" | "FREE_SHIPPING";
   value: number;
+  minOrderValue: number | null;
   usedCount: number;
   maxUses: number | null;
   affiliateName: string | null;
@@ -23,11 +24,13 @@ interface Coupon {
 const FIELD_CLASS = "w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-red/40 focus:border-brand-red";
 const LABEL_CLASS = "block text-xs font-medium text-gray-400 mb-1";
 
+type CouponType = "PERCENTAGE" | "FIXED" | "FREE_SHIPPING";
+
 function CouponModal({ onClose, onCreated }: { onClose: () => void; onCreated: (c: Coupon) => void }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    code: "", type: "PERCENTAGE" as "PERCENTAGE" | "FIXED",
-    value: "", maxUses: "", expiresAt: "",
+    code: "", type: "PERCENTAGE" as CouponType,
+    value: "", minOrderValue: "", maxUses: "", expiresAt: "",
   });
 
   function set(k: string, v: string) { setForm((p) => ({ ...p, [k]: v })); }
@@ -36,12 +39,15 @@ function CouponModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     e.preventDefault();
     setSaving(true);
     try {
+      const isFreeShipping = form.type === "FREE_SHIPPING";
       const res = await fetch(`${BASE}/api/admin/coupons`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
-          value: parseFloat(form.value),
+          code: form.code,
+          type: form.type,
+          value: isFreeShipping ? 0 : parseFloat(form.value || "0"),
+          minOrderValue: form.minOrderValue ? parseFloat(form.minOrderValue) : null,
           maxUses: form.maxUses ? parseInt(form.maxUses, 10) : null,
           expiresAt: form.expiresAt || null,
         }),
@@ -58,6 +64,8 @@ function CouponModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     }
   }
 
+  const isFreeShipping = form.type === "FREE_SHIPPING";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
@@ -71,24 +79,36 @@ function CouponModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
             <div>
               <label className={LABEL_CLASS}>Tipo</label>
               <select value={form.type} onChange={(e) => set("type", e.target.value)} className={FIELD_CLASS}>
-                <option value="PERCENTAGE">Porcentagem</option>
-                <option value="FIXED">Valor Fixo</option>
+                <option value="PERCENTAGE">Porcentagem (%)</option>
+                <option value="FIXED">Valor Fixo (R$)</option>
+                <option value="FREE_SHIPPING">Frete Grátis</option>
               </select>
             </div>
-            <div>
-              <label className={LABEL_CLASS}>Valor {form.type === "PERCENTAGE" ? "(%)" : "(R$)"}</label>
-              <input type="number" min="0" step="0.01" value={form.value} onChange={(e) => set("value", e.target.value)} required className={FIELD_CLASS} />
-            </div>
+            {!isFreeShipping && (
+              <div>
+                <label className={LABEL_CLASS}>Valor {form.type === "PERCENTAGE" ? "(%)" : "(R$)"}</label>
+                <input type="number" min="0" step="0.01" value={form.value} onChange={(e) => set("value", e.target.value)} required className={FIELD_CLASS} />
+              </div>
+            )}
+            {isFreeShipping && (
+              <div className="flex items-end pb-1">
+                <span className="text-xs text-green-400 font-medium">Frete zerado automaticamente</span>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLASS}>Pedido mínimo (R$)</label>
+              <input type="number" min="0" step="0.01" value={form.minOrderValue} onChange={(e) => set("minOrderValue", e.target.value)} placeholder="Sem mínimo" className={FIELD_CLASS} />
+            </div>
             <div>
               <label className={LABEL_CLASS}>Máx. Usos</label>
               <input type="number" min="1" value={form.maxUses} onChange={(e) => set("maxUses", e.target.value)} placeholder="Ilimitado" className={FIELD_CLASS} />
             </div>
-            <div>
-              <label className={LABEL_CLASS}>Validade</label>
-              <input type="date" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} className={FIELD_CLASS} />
-            </div>
+          </div>
+          <div>
+            <label className={LABEL_CLASS}>Validade</label>
+            <input type="date" value={form.expiresAt} onChange={(e) => set("expiresAt", e.target.value)} className={FIELD_CLASS} />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="submit" disabled={saving} className={cn("flex-1 bg-brand-red hover:bg-brand-red-light text-white font-semibold py-2.5 rounded-lg text-sm transition-colors", saving && "opacity-70 cursor-not-allowed")}>
@@ -207,7 +227,12 @@ export default function CuponsPage() {
                       <span className="font-mono font-semibold text-white">{c.code}</span>
                     </td>
                     <td className="px-5 py-3.5 text-gray-300">
-                      {c.type === "PERCENTAGE" ? `${c.value}%` : formatCurrency(c.value)}
+                      {c.type === "FREE_SHIPPING"
+                        ? <span className="text-green-400 font-medium">Frete Grátis</span>
+                        : c.type === "PERCENTAGE"
+                          ? `${c.value}%`
+                          : formatCurrency(c.value)
+                      }
                     </td>
                     <td className="px-5 py-3.5 text-right text-gray-400 hidden sm:table-cell">
                       {c.usedCount}{c.maxUses ? `/${c.maxUses}` : ""}

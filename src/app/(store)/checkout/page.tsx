@@ -420,7 +420,17 @@ export default function CheckoutPage() {
                 <div className="border-t border-gray-100 pt-4 space-y-2.5 text-sm">
                   <div className="flex justify-between text-gray-500"><span>Subtotal</span><span>{formatCurrency(subtotal)}</span></div>
                   {couponDiscount > 0 && <div className="flex justify-between text-emerald-600 font-medium"><span>Desconto</span><span>-{formatCurrency(couponDiscount)}</span></div>}
-                  <div className="flex justify-between text-gray-500"><span>Frete</span><span>{shipping === 0 ? <span className="text-emerald-600 font-medium">Grátis</span> : formatCurrency(shipping)}</span></div>
+                  <div className="flex justify-between text-gray-500">
+                    <span>Frete</span>
+                    <span>
+                      {coupon?.freeShipping
+                        ? <span className="text-emerald-600 font-medium">Grátis 🏷️</span>
+                        : shipping === 0
+                          ? <span className="text-emerald-600 font-medium">Grátis</span>
+                          : formatCurrency(shipping)
+                      }
+                    </span>
+                  </div>
                   <div className="border-t border-gray-100 pt-3 mt-1 flex justify-between items-end">
                     <span className="font-bold text-gray-900">Total</span>
                     <div className="text-right">

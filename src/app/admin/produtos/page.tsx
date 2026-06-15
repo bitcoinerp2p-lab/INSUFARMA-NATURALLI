@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Search, Copy, Pencil } from "lucide-react";
+import { Plus, Search, Pencil } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
 interface Product {
   id: string;
@@ -56,11 +55,6 @@ export default function ProdutosPage() {
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erro");
     }
-  }
-
-  function copyLink(slug: string, sku: string) {
-    const link = `${SITE}/produto/${slug}?ref=${sku}`;
-    navigator.clipboard.writeText(link).then(() => toast.success("Link copiado!"));
   }
 
   const filtered = useMemo(
@@ -155,14 +149,6 @@ export default function ProdutosPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => copyLink(p.slug, p.sku)}
-                          title="Copiar link de afiliado"
-                          className="text-gray-500 hover:text-brand-gold transition-colors"
-                        >
-                          <Copy size={14} />
-                        </button>
                         <Link
                           href={`/admin/produtos/${p.id}`}
                           className="text-gray-500 hover:text-white transition-colors"

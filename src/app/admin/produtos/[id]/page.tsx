@@ -116,7 +116,6 @@ export default function EditProdutoPage() {
   }
 
   const productLink = `${SITE}/produto/${form.slug}`;
-  const trackingLink = `${SITE}/produto/${form.slug}?ref=${form.sku}`;
 
   function copyLink(link: string) {
     navigator.clipboard.writeText(link).then(() => toast.success("Link copiado!"));
@@ -140,31 +139,24 @@ export default function EditProdutoPage() {
       </div>
 
       {/* Links */}
-      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-300">Links</h2>
-        {[
-          { label: "Link do Produto", link: productLink },
-          { label: "Link de Rastreamento", link: trackingLink },
-        ].map(({ label, link }) => (
-          <div key={label}>
-            <p className="text-xs text-gray-500 mb-1">{label}</p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={link}
-                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 font-mono focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => copyLink(link)}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand-gold border border-gray-700 px-3 py-2 rounded-lg transition-colors"
-              >
-                <Copy size={13} />
-                Copiar
-              </button>
-            </div>
-          </div>
-        ))}
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-5">
+        <h2 className="text-sm font-semibold text-gray-300 mb-3">Links</h2>
+        <p className="text-xs text-gray-500 mb-1">Link do Produto</p>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={productLink}
+            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 font-mono focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={() => copyLink(productLink)}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-brand-gold border border-gray-700 px-3 py-2 rounded-lg transition-colors"
+          >
+            <Copy size={13} />
+            Copiar
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

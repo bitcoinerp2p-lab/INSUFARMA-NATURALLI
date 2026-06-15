@@ -54,6 +54,8 @@ export default function AfiliadoDetailPage() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", cpf: "", commissionRate: "" });
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -115,6 +117,26 @@ export default function AfiliadoDetailPage() {
       toast.error(e instanceof Error ? e.message : "Erro");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function setCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) { toast.error("Senha deve ter pelo menos 6 caracteres"); return; }
+    setSavingPassword(true);
+    try {
+      const res = await fetch(`${BASE}/api/admin/affiliates/${id}/credentials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Falha ao definir senha"); }
+      toast.success("Senha definida! O afiliado já pode fazer login.");
+      setNewPassword("");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erro");
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -206,6 +228,24 @@ export default function AfiliadoDetailPage() {
             <button type="submit" disabled={saving} className={cn("bg-brand-red hover:bg-brand-red-light text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors", saving && "opacity-70 cursor-not-allowed")}>
               {saving ? "Salvando…" : "Salvar"}
             </button>
+          </form>
+
+          <form onSubmit={setCredentials} className="bg-gray-900 rounded-2xl border border-gray-800 p-6 space-y-4">
+            <h2 className="text-sm font-semibold text-gray-300">Definir Senha de Acesso</h2>
+            <p className="text-xs text-gray-500">Use isso para criar ou redefinir as credenciais de login do afiliado.</p>
+            <div className="flex gap-3">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Nova senha (mín. 6 caracteres)"
+                className={cn(FIELD_CLASS, "flex-1")}
+                minLength={6}
+              />
+              <button type="submit" disabled={savingPassword} className={cn("bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors flex-shrink-0", savingPassword && "opacity-70 cursor-not-allowed")}>
+                {savingPassword ? "Salvando…" : "Definir"}
+              </button>
+            </div>
           </form>
 
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">

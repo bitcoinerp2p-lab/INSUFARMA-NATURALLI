@@ -7,11 +7,11 @@ const createSchema = z.object({
   code: z.string().min(2).max(30).toUpperCase(),
   type: z.enum(["PERCENTAGE", "FIXED", "FREE_SHIPPING"]),
   value: z.number().nonnegative(),
-  minOrderValue: z.number().nonnegative().optional(),
-  maxUses: z.number().int().positive().optional(),
-  expiresAt: z.string().datetime().optional(),
-  affiliateId: z.string().uuid().optional(),
-  productId: z.string().uuid().optional(),
+  minOrderValue: z.number().nonnegative().nullable().optional(),
+  maxUses: z.number().int().positive().nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
+  affiliateId: z.string().uuid().nullable().optional(),
+  productId: z.string().uuid().nullable().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -68,10 +68,12 @@ export async function POST(req: NextRequest) {
       data: {
         code: data.code,
         type: data.type,
-        value: data.value,
+        value: data.type === "FREE_SHIPPING" ? 0 : data.value,
         minOrderValue: data.minOrderValue ?? null,
         maxUses: data.maxUses ?? null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        expiresAt: data.expiresAt
+          ? new Date(data.expiresAt.includes("T") ? data.expiresAt : `${data.expiresAt}T23:59:59.000Z`)
+          : null,
         affiliateId: data.affiliateId ?? null,
         productId: data.productId ?? null,
       },

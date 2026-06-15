@@ -22,12 +22,17 @@ export default function CarrinhoPage() {
       const res = await fetch(`${BASE}/api/coupons/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: couponInput.trim().toUpperCase(), orderValue: subtotal }),
+        body: JSON.stringify({ code: couponInput.trim().toUpperCase(), orderTotal: subtotal }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Cupom inválido"); return; }
-      setCoupon({ code: data.coupon.code, discount: data.discount });
-      toast.success(`Cupom aplicado! Desconto de ${formatCurrency(data.discount)}`);
+      const { coupon: c } = data;
+      setCoupon({ code: c.code, discount: c.discountAmount, freeShipping: c.freeShipping ?? false });
+      if (c.freeShipping) {
+        toast.success("Cupom aplicado! Frete grátis no seu pedido.");
+      } else {
+        toast.success(`Cupom aplicado! Desconto de ${formatCurrency(c.discountAmount)}`);
+      }
     } catch {
       toast.error("Erro ao validar cupom");
     } finally {
@@ -120,7 +125,9 @@ export default function CarrinhoPage() {
               <div className="mb-4">
                 {coupon ? (
                   <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                    <span className="text-green-700 text-sm font-medium">🏷️ {coupon.code} aplicado</span>
+                    <span className="text-green-700 text-sm font-medium">
+                      🏷️ {coupon.code} — {coupon.freeShipping ? "Frete grátis" : `-${formatCurrency(coupon.discount)}`}
+                    </span>
                     <button type="button" onClick={removeCoupon} className="text-green-600 hover:text-green-800 text-xs underline">Remover</button>
                   </div>
                 ) : (
@@ -154,7 +161,14 @@ export default function CarrinhoPage() {
                 )}
                 <div className="flex justify-between text-gray-600">
                   <span>Frete</span>
-                  <span>{shipping === 0 ? <span className="text-green-600 font-medium">Grátis</span> : formatCurrency(shipping)}</span>
+                  <span>
+                    {coupon?.freeShipping
+                      ? <span className="text-green-600 font-medium">Grátis 🏷️</span>
+                      : shipping === 0
+                        ? <span className="text-green-600 font-medium">Grátis</span>
+                        : formatCurrency(shipping)
+                    }
+                  </span>
                 </div>
                 {shipping > 0 && (
                   <p className="text-xs text-gray-400">Frete grátis acima de R$ 199,00</p>
