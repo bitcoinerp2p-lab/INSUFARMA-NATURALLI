@@ -71,6 +71,14 @@ export async function POST(req: NextRequest) {
 
     const { addressId, couponCode, paymentMethod, affiliateCode, items } = parsed.data;
 
+    // Validate PIX availability before touching the database
+    if (paymentMethod === "pix" && !process.env.EFI_PIX_KEY) {
+      return NextResponse.json(
+        { error: "Pagamento via PIX não disponível no momento. Escolha outro método de pagamento." },
+        { status: 503 }
+      );
+    }
+
     // Resolve affiliate: explicit code in body → stored referral on user → null
     let resolvedAffiliateId: string | null = null;
     if (affiliateCode) {
@@ -270,10 +278,8 @@ export async function POST(req: NextRequest) {
           };
         } catch (err) {
           console.error("[orders] Pix charge generation failed:", err);
-          // Order is created — Pix can be regenerated later
+          // pixData stays null — checkout will retry via /api/pix/charge
         }
-      } else {
-        console.warn("[orders] EFI_PIX_KEY not set — Pix charge skipped");
       }
     }
 

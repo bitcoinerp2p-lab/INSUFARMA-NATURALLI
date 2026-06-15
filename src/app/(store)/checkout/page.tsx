@@ -263,9 +263,27 @@ export default function CheckoutPage() {
       const d = await r.json();
       if (!r.ok) { toast.error(d.error ?? "Erro ao criar pedido"); return; }
 
-      if (paymentMethod === "pix" && d.pix) {
+      if (paymentMethod === "pix") {
         clearCart();
-        setPixData({ ...d.pix, orderId: d.order.id });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let pixPayload: any = d.pix;
+        if (!pixPayload?.txid) {
+          // PIX generation failed at order creation — try regenerating
+          try {
+            const regenRes = await fetch(`${BASE}/api/pix/charge`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orderId: d.order.id }),
+            });
+            if (regenRes.ok) pixPayload = await regenRes.json();
+          } catch { /* ignore */ }
+        }
+        if (pixPayload?.txid) {
+          setPixData({ ...pixPayload, orderId: d.order.id });
+        } else {
+          toast.error("Não foi possível gerar o PIX. Verifique suas configurações EFI ou tente novamente pelos seus pedidos.");
+          router.push(`/conta?pedido=${d.order.id}`);
+        }
         return;
       }
 
