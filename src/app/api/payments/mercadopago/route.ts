@@ -11,9 +11,7 @@ function getAuth(req: NextRequest) {
     const token = req.cookies.get("auth-token")?.value;
     if (!token) return null;
     return verifyToken(token);
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function POST(req: NextRequest) {
@@ -66,14 +64,24 @@ export async function POST(req: NextRequest) {
       },
       auto_return: "approved",
       notification_url: notifUrl,
+      payment_methods: {
+        excluded_payment_types: [
+          { id: "bank_transfer" },
+          { id: "ticket" },
+        ],
+        installments: 12,
+      },
     });
+
+    const checkoutUrl =
+      process.env.MP_SANDBOX === "true" ? preference.sandbox_init_point : preference.init_point;
 
     await prisma.order.update({
       where: { id: orderId },
-      data: { paymentLink: preference.init_point },
+      data: { paymentLink: checkoutUrl, mpPaymentId: preference.id, paymentMethod: "card" },
     });
 
-    return NextResponse.json({ checkoutUrl: preference.init_point, preferenceId: preference.id });
+    return NextResponse.json({ checkoutUrl, preferenceId: preference.id });
   } catch (err) {
     console.error("[payments/mercadopago]", err);
     return NextResponse.json({ error: "Erro ao criar preferência de pagamento" }, { status: 500 });

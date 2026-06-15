@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
-import { createPreference } from "@/lib/mercadopago";
 import { Prisma } from "@prisma/client";
 
 function getAuthPayload(req: NextRequest): { id: string; role: string; email: string } | null {
@@ -212,53 +211,7 @@ export async function POST(req: NextRequest) {
       return newOrder;
     });
 
-    // Create Mercado Pago preference
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const notifUrl = process.env.MP_WEBHOOK_URL ?? `${siteUrl}/api/webhooks/mercadopago`;
-
-    try {
-      const preference = await createPreference({
-        items: order.items.map((item) => ({
-          title: item.product.name,
-          quantity: item.quantity,
-          unit_price: Number(item.price),
-          currency_id: "BRL",
-        })),
-        payer: {
-          name: order.user.name,
-          email: order.user.email,
-          ...(order.user.cpf
-            ? { identification: { type: "CPF", number: order.user.cpf.replace(/\D/g, "") } }
-            : {}),
-        },
-        external_reference: order.id,
-        back_urls: {
-          success: `${siteUrl}/checkout/sucesso?pedido=${order.id}`,
-          failure: `${siteUrl}/conta?pedido=${order.id}&erro=1`,
-          pending: `${siteUrl}/conta?pedido=${order.id}&pendente=1`,
-        },
-        auto_return: "approved",
-        notification_url: notifUrl,
-      });
-
-      const checkoutUrl =
-        process.env.MP_SANDBOX === "true"
-          ? preference.sandbox_init_point
-          : preference.init_point;
-
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { paymentLink: checkoutUrl, mpPaymentId: preference.id },
-      });
-
-      return NextResponse.json({ order, checkoutUrl }, { status: 201 });
-    } catch (mpErr) {
-      console.error("[orders] Mercado Pago preference failed:", mpErr);
-      return NextResponse.json(
-        { error: "Erro ao iniciar pagamento. Tente novamente." },
-        { status: 502 }
-      );
-    }
+    return NextResponse.json({ order }, { status: 201 });
   } catch (err) {
     console.error("[orders POST]", err);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
