@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
           email,
           password: hashedPassword,
           role: "CUSTOMER",
-          phone: phone ?? null,
-          cpf: cpf ?? null,
+          phone: phone || null,
+          cpf: cpf || null,
         },
       });
 
@@ -61,14 +61,16 @@ export async function POST(req: NextRequest) {
           userId: u.id,
           name,
           email,
-          phone: phone ?? null,
-          cpf: cpf ?? null,
+          phone: phone || null,
+          cpf: cpf || null,
           code,
           status: "PENDING",
           commissionRate: 10,
           commissionType: "PERCENTAGE",
         },
       });
+
+      await tx.affiliateWallet.create({ data: { affiliateId: a.id } });
 
       return { user: u, affiliate: a };
     });

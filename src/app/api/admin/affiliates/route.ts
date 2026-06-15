@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     const affiliate = await prisma.$transaction(async (tx) => {
       const user = existingUser ?? await tx.user.create({
-        data: { name, email, password: hashedPassword, role: "CUSTOMER", phone: phone ?? null, cpf: cpf ?? null },
+        data: { name, email, password: hashedPassword, role: "CUSTOMER", phone: phone || null, cpf: cpf || null },
       });
 
       if (existingUser) {
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       }
 
       const a = await tx.affiliate.create({
-        data: { userId: user.id, name, email, phone, cpf, code, commissionRate, commissionType, status: "ACTIVE" },
+        data: { userId: user.id, name, email, phone: phone || null, cpf: cpf || null, code, commissionRate, commissionType, status: "ACTIVE" },
       });
       await tx.affiliateWallet.create({ data: { affiliateId: a.id } });
       return a;
