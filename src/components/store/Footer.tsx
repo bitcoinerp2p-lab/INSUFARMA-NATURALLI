@@ -187,7 +187,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
           <p>
             &copy; {currentYear} INSUFARMA NATURALLI. Todos os direitos
-            reservados. CNPJ 00.000.000/0001-00
+            reservados. CNPJ 43.423.730/0001-08
           </p>
           <div className="flex items-center gap-4">
             <Link
