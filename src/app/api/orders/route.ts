@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Cupom esgotado" }, { status: 422 });
       }
 
-      const minOrder = coupon.minOrderValue ? Number(coupon.minOrderValue) : 0;
+      const minOrder = coupon.minOrderValue && coupon.type !== "FREE_SHIPPING" ? Number(coupon.minOrderValue) : 0;
       if (subtotal < minOrder) {
         return NextResponse.json(
           { error: `Pedido mínimo de R$ ${minOrder.toFixed(2)} para este cupom` },
