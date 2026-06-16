@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -63,35 +63,51 @@ export default function AfiliadorDashboardPage() {
   const [generatingLink, setGeneratingLink] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("visao-geral");
   const [productSearch, setProductSearch] = useState("");
+  const [linksVersion, setLinksVersion] = useState(0);
+  const productsLoadedRef = useRef(false);
 
+  // Initial dashboard data load
   const load = useCallback(async () => {
     try {
-      const [meRes, dashRes] = await Promise.all([fetch(`${BASE}/api/affiliate/auth/me`), fetch(`${BASE}/api/affiliate/dashboard`)]);
+      const [meRes, dashRes] = await Promise.all([
+        fetch(`${BASE}/api/affiliate/auth/me`),
+        fetch(`${BASE}/api/affiliate/dashboard`),
+      ]);
       if (!meRes.ok) { router.push("/afiliado/login"); return; }
       if (!dashRes.ok) { toast.error("Erro ao carregar dados"); return; }
       setData(await dashRes.json());
-    } catch { toast.error("Erro ao carregar dashboard"); } finally { setLoading(false); }
+    } catch { toast.error("Erro ao carregar dashboard"); }
+    finally { setLoading(false); }
   }, [router]);
 
-  const loadProducts = useCallback(async () => {
-    if (productsLoading || products.length > 0) return;
-    setProductsLoading(true);
-    try { const r = await fetch(`${BASE}/api/affiliate/products`); if (!r.ok) throw new Error(); setProducts((await r.json()).products ?? []); }
-    catch { toast.error("Erro ao carregar produtos"); } finally { setProductsLoading(false); }
-  }, [productsLoading, products.length]);
-
-  const loadLinks = useCallback(async () => {
-    if (linksLoading) return;
-    setLinksLoading(true);
-    try { const r = await fetch(`${BASE}/api/affiliate/links`); if (!r.ok) throw new Error(); setLinks((await r.json()).links ?? []); }
-    catch { toast.error("Erro ao carregar links"); } finally { setLinksLoading(false); }
-  }, [linksLoading]);
-
   useEffect(() => { load(); }, [load]);
+
+  // Products: load once when tab is first opened
   useEffect(() => {
-    if (activeTab === "produtos") loadProducts();
-    if (activeTab === "meus-links") loadLinks();
-  }, [activeTab, loadProducts, loadLinks]);
+    if (activeTab !== "produtos" || productsLoadedRef.current) return;
+    productsLoadedRef.current = true;
+    setProductsLoading(true);
+    let cancelled = false;
+    fetch(`${BASE}/api/affiliate/products`)
+      .then((r) => r.json())
+      .then((json) => { if (!cancelled) setProducts(json.products ?? []); })
+      .catch(() => { if (!cancelled) toast.error("Erro ao carregar produtos"); })
+      .finally(() => { if (!cancelled) setProductsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab]);
+
+  // Links: reload whenever linksVersion changes or tab is opened
+  useEffect(() => {
+    if (activeTab !== "meus-links") return;
+    setLinksLoading(true);
+    let cancelled = false;
+    fetch(`${BASE}/api/affiliate/links`)
+      .then((r) => r.json())
+      .then((json) => { if (!cancelled) setLinks(json.links ?? []); })
+      .catch(() => { if (!cancelled) toast.error("Erro ao carregar links"); })
+      .finally(() => { if (!cancelled) setLinksLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, linksVersion]);
 
   async function logout() {
     await fetch(`${BASE}/api/affiliate/auth/logout`, { method: "POST" });
@@ -101,21 +117,33 @@ export default function AfiliadorDashboardPage() {
   async function generateLink(productId: string, productName: string) {
     setGeneratingLink(productId);
     try {
-      const res = await fetch(`${BASE}/api/affiliate/links`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId }) });
+      const res = await fetch(`${BASE}/api/affiliate/links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
       if (!res.ok) throw new Error();
       const { url } = await res.json();
       await navigator.clipboard.writeText(url);
       toast.success(`Link de "${productName}" copiado!`);
-      setLinks([]);
-    } catch { toast.error("Erro ao gerar link"); } finally { setGeneratingLink(null); }
+      // Increment version to trigger a refresh of Meus Links tab
+      setLinksVersion((v) => v + 1);
+    } catch { toast.error("Erro ao gerar link"); }
+    finally { setGeneratingLink(null); }
   }
 
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
   if (!data) return null;
 
   const { stats, recentSales, affiliate } = data;
   const affiliateLink = `${SITE}/?ref=${affiliate.code}`;
-  const filteredProducts = productSearch.trim() ? products.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase())) : products;
+  const filteredProducts = productSearch.trim()
+    ? products.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+    : products;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -139,6 +167,7 @@ export default function AfiliadorDashboardPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+        {/* ── Visão Geral ── */}
         {activeTab === "visao-geral" && (
           <div className="space-y-8">
             <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -195,6 +224,7 @@ export default function AfiliadorDashboardPage() {
           </div>
         )}
 
+        {/* ── Produtos Disponíveis ── */}
         {activeTab === "produtos" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
@@ -211,10 +241,10 @@ export default function AfiliadorDashboardPage() {
                 {filteredProducts.map((p) => (
                   <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden flex flex-col">
                     <div className="w-full aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                      {p.imageUrl ? (
+                      {p.imageUrl
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                      ) : <span className="text-4xl">🌿</span>}
+                        ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                        : <span className="text-4xl">🌿</span>}
                     </div>
                     <div className="p-4 flex flex-col flex-1 gap-3">
                       <div>
@@ -237,11 +267,12 @@ export default function AfiliadorDashboardPage() {
           </div>
         )}
 
+        {/* ── Meus Links ── */}
         {activeTab === "meus-links" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-800">Meus Links de Produto</h2>
-              <button type="button" onClick={() => { setLinks([]); loadLinks(); }} className="text-xs text-green-600 hover:underline">Atualizar</button>
+              <button type="button" onClick={() => setLinksVersion((v) => v + 1)} className="text-xs text-green-600 hover:underline">Atualizar</button>
             </div>
             {linksLoading ? (
               <div className="flex items-center justify-center py-16"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>
@@ -256,10 +287,10 @@ export default function AfiliadorDashboardPage() {
                   <div key={link.id} className="bg-white rounded-2xl border border-gray-100 p-5">
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {link.productImageUrl ? (
+                        {link.productImageUrl
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={link.productImageUrl} alt={link.productName ?? ""} className="w-full h-full object-cover" />
-                        ) : <span className="text-2xl">🌿</span>}
+                          ? <img src={link.productImageUrl} alt={link.productName ?? ""} className="w-full h-full object-cover" />
+                          : <span className="text-2xl">🌿</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 text-sm">{link.productName ?? "Produto"}</p>
