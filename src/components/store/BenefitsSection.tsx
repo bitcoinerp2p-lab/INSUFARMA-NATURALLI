@@ -1,109 +1,111 @@
-import { cn } from "@/lib/utils";
+"use client";
+
+import { motion } from "framer-motion";
 
 interface Benefit {
-  icon: string;
+  number: string;
   title: string;
   description: string;
 }
 
 const BENEFITS: Benefit[] = [
   {
-    icon: "✓",
+    number: "01",
     title: "Produtos Selecionados",
     description:
       "Cada produto é rigorosamente selecionado por especialistas em nutrição e saúde.",
   },
   {
-    icon: "✓",
+    number: "02",
     title: "Atendimento Especializado",
     description:
       "Nossa equipe está pronta para orientar você na escolha do melhor suplemento.",
   },
   {
-    icon: "✓",
+    number: "03",
     title: "Entrega para Todo Brasil",
     description:
       "Enviamos para todos os estados com frete rápido e rastreamento em tempo real.",
   },
   {
-    icon: "✓",
+    number: "04",
     title: "Compra Segura",
     description:
       "Ambiente 100% seguro com criptografia SSL e pagamento protegido.",
   },
   {
-    icon: "✓",
+    number: "05",
     title: "Suporte Pós-venda",
     description:
       "Continuamos ao seu lado após a compra para garantir os melhores resultados.",
   },
 ];
 
+const container = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", damping: 28, stiffness: 260 },
+  },
+};
+
 export default function BenefitsSection() {
   return (
-    <section className="py-20 bg-white">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          tag="Por que nos escolher"
-          title="Benefícios que fazem a diferença"
-          subtitle="Comprometidos com a sua saúde e bem-estar em cada etapa da sua jornada."
-        />
+    <section className="py-24 bg-[#fafaf8]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header — left-aligned for visual variety */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="mb-16 max-w-xl"
+        >
+          <span className="inline-block px-4 py-1.5 text-[11px] font-semibold tracking-[0.14em] text-[#8B0000] border border-[#8B0000]/25 rounded-full mb-6 uppercase">
+            Por que nos escolher
+          </span>
+          <h2 className="font-display text-4xl sm:text-5xl font-bold text-[#1a1a1a] leading-[1.12] mb-4">
+            Benefícios que fazem<br />a diferença
+          </h2>
+          <p className="text-[#4a4a4a] text-lg">
+            Comprometidos com a sua saúde e bem-estar em cada etapa da sua jornada.
+          </p>
+        </motion.div>
 
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-          {BENEFITS.map((benefit, index) => (
-            <BenefitCard key={benefit.title} benefit={benefit} index={index} />
+        {/* Benefits — unified bordered grid */}
+        <motion.div
+          variants={container}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-80px" }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 border border-[#e8e0d5] rounded-2xl overflow-hidden divide-y sm:divide-y-0 divide-[#e8e0d5] lg:divide-x lg:divide-y-0"
+        >
+          {BENEFITS.map((benefit) => (
+            <motion.div
+              key={benefit.number}
+              variants={item}
+              whileHover={{ backgroundColor: "#FFFFFF" }}
+              className="flex flex-col p-8 bg-white cursor-default group transition-colors duration-300"
+            >
+              <span className="font-display text-4xl font-bold text-[#8B0000]/10 group-hover:text-[#C9A84C]/30 transition-colors mb-4 leading-none select-none">
+                {benefit.number}
+              </span>
+              <h3 className="font-semibold text-[#1a1a1a] text-[15px] mb-2 leading-snug">
+                {benefit.title}
+              </h3>
+              <p className="text-[#9a9a9a] text-sm leading-relaxed">
+                {benefit.description}
+              </p>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
-  );
-}
-
-function BenefitCard({
-  benefit,
-  index,
-}: {
-  benefit: Benefit;
-  index: number;
-}) {
-  const delay = `${index * 100}ms`;
-  return (
-    <div
-      className={cn(
-        "group flex flex-col items-center text-center p-6 rounded-2xl border border-gray-100",
-        "hover:border-brand-gold/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-      )}
-      style={{ animationDelay: delay }}
-    >
-      <div className="w-12 h-12 rounded-full bg-brand-red/10 flex items-center justify-center mb-4 group-hover:bg-brand-red/20 transition-colors">
-        <span className="text-brand-red font-bold text-xl">{benefit.icon}</span>
-      </div>
-      <h3 className="font-display font-bold text-gray-900 mb-2 text-base">
-        {benefit.title}
-      </h3>
-      <p className="text-gray-500 text-sm leading-relaxed">{benefit.description}</p>
-    </div>
-  );
-}
-
-function SectionHeader({
-  tag,
-  title,
-  subtitle,
-}: {
-  tag: string;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <div className="text-center max-w-2xl mx-auto">
-      <span className="inline-block px-4 py-1 text-xs font-semibold tracking-widest text-brand-red border border-brand-red/30 rounded-full mb-4 uppercase">
-        {tag}
-      </span>
-      <h2 className="font-display text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-        {title}
-      </h2>
-      <p className="text-gray-500 text-lg">{subtitle}</p>
-    </div>
   );
 }
