@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Pagamento não disponível no momento." }, { status: 503 });
   }
 
+  const SHIPPING_FEE = 30;
+
   try {
     const body = await req.json();
     const parsed = createOrderSchema.safeParse(body);
@@ -125,6 +127,7 @@ export async function POST(req: NextRequest) {
 
     // Validate coupon
     let discountAmount = 0;
+    let freeShipping = false;
     let resolvedCouponCode: string | null = null;
 
     if (couponCode) {
@@ -156,12 +159,15 @@ export async function POST(req: NextRequest) {
         discountAmount = (subtotal * Number(coupon.value)) / 100;
       } else if (coupon.type === "FIXED") {
         discountAmount = Math.min(Number(coupon.value), subtotal);
+      } else if (coupon.type === "FREE_SHIPPING") {
+        freeShipping = true;
       }
 
       resolvedCouponCode = coupon.code;
     }
 
-    const totalAmount = Math.max(0, subtotal - discountAmount);
+    const shippingAmount = freeShipping ? 0 : SHIPPING_FEE;
+    const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
 
     // Create order in transaction
     const order = await prisma.$transaction(async (tx) => {
@@ -170,6 +176,7 @@ export async function POST(req: NextRequest) {
           userId: auth.id,
           addressId,
           totalAmount: new Prisma.Decimal(totalAmount),
+          shippingAmount: new Prisma.Decimal(shippingAmount),
           discountAmount: new Prisma.Decimal(discountAmount),
           couponCode: resolvedCouponCode,
           paymentMethod: paymentMethod ?? null,

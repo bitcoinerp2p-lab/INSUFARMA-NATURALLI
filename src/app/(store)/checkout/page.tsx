@@ -44,6 +44,7 @@ export default function CheckoutPage() {
   const [cpf, setCpf] = useState("");
   const [step, setStep] = useState<Step>("form");
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderTotal, setOrderTotal] = useState<number>(0);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [boletoData, setBoletoData] = useState<BoletoData | null>(null);
   const [copied, setCopied] = useState(false);
@@ -115,6 +116,7 @@ export default function CheckoutPage() {
 
     try {
       let oid = orderId;
+      let capturedTotal = orderTotal;
       if (!oid) {
         const or = await fetch(`${BASE}/api/orders`, {
           method: "POST",
@@ -124,7 +126,9 @@ export default function CheckoutPage() {
         const od = await or.json();
         if (!or.ok) { toast.error(od.error ?? "Erro ao criar pedido"); return; }
         oid = od.order.id;
+        capturedTotal = Number(od.order.totalAmount ?? total);
         setOrderId(oid);
+        setOrderTotal(capturedTotal);
         clearCart();
         if (typeof window !== "undefined") localStorage.removeItem("affiliate_ref");
       }
@@ -186,7 +190,7 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-brand-red px-6 py-5 text-center text-white">
             <p className="font-display font-bold text-xl">Pague via PIX</p>
-            <p className="text-white/80 text-sm mt-1">{formatCurrency(total)}</p>
+            <p className="text-white/80 text-sm mt-1">{formatCurrency(orderTotal)}</p>
           </div>
           <div className="p-6 text-center">
             {pixData.qrCodeBase64
@@ -221,7 +225,7 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="bg-brand-red px-6 py-5 text-center text-white">
             <p className="font-display font-bold text-xl">Boleto Gerado</p>
-            <p className="text-white/80 text-sm mt-1">{formatCurrency(total)}</p>
+            <p className="text-white/80 text-sm mt-1">{formatCurrency(orderTotal)}</p>
           </div>
           <div className="p-6">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">

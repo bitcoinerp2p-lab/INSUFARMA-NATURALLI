@@ -42,12 +42,14 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     });
 
+    // Use the affiliate's commission rate (not the product's default) — the webhook applies affiliate rate
+    const affiliateRate = Number(affiliate.commissionRate);
+    const affiliateType = affiliate.commissionType;
+
     const result = products.map((p) => {
       const price = Number(p.salePrice ?? p.price);
-      const commissionRate = Number(p.defaultAffiliateCommission);
-      const commissionType = p.affiliateCommissionType;
       const estimatedCommission =
-        commissionType === "PERCENTAGE" ? (price * commissionRate) / 100 : commissionRate;
+        affiliateType === "PERCENTAGE" ? (price * affiliateRate) / 100 : affiliateRate;
 
       return {
         id: p.id,
@@ -56,8 +58,8 @@ export async function GET(req: NextRequest) {
         price: Number(p.price),
         salePrice: p.salePrice ? Number(p.salePrice) : null,
         imageUrl: p.images[0] ?? null,
-        commissionRate,
-        commissionType,
+        commissionRate: affiliateRate,
+        commissionType: affiliateType,
         estimatedCommission: Number(estimatedCommission.toFixed(2)),
       };
     });

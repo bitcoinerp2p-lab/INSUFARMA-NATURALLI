@@ -68,11 +68,13 @@ function reducer(state: CartState, action: CartAction): CartState {
   }
 }
 
+const SHIPPING_FEE = 30;
+
 function calcTotals(state: CartState) {
   const subtotal = state.items.reduce((s, i) => s + (i.product.salePrice ?? i.product.price) * i.quantity, 0);
   const couponDiscount = state.coupon?.discount ?? 0;
   const freeShipping = state.coupon?.freeShipping ?? false;
-  const shipping = subtotal > 0 && subtotal < 199 && !freeShipping ? 25 : 0;
+  const shipping = subtotal > 0 && !freeShipping ? SHIPPING_FEE : 0;
   const total = Math.max(0, subtotal - couponDiscount + shipping);
   const itemCount = state.items.reduce((s, i) => s + i.quantity, 0);
   return { subtotal, couponDiscount, shipping, total, itemCount };

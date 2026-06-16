@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       status: o.status,
       paymentMethod: o.paymentMethod,
       totalAmount: Number(o.totalAmount),
+      shippingAmount: Number(o.shippingAmount),
       discountAmount: Number(o.discountAmount),
       customerName: o.user.name,
       customerEmail: o.user.email,

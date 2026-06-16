@@ -170,8 +170,8 @@ export default function CarrinhoPage() {
                     }
                   </span>
                 </div>
-                {shipping > 0 && (
-                  <p className="text-xs text-gray-400">Frete grátis acima de R$ 199,00</p>
+                {shipping > 0 && coupon?.freeShipping === false && (
+                  <p className="text-xs text-gray-400">Frete fixo para todo o Brasil</p>
                 )}
                 <div className="flex justify-between font-bold text-gray-900 text-lg border-t border-gray-100 pt-3 mt-2">
                   <span>Total</span>

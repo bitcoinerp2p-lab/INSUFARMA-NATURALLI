@@ -189,6 +189,7 @@ model Order {
   id               String      @id @default(uuid())
   userId           String      @map("user_id")
   totalAmount      Decimal     @db.Decimal(10, 2) @map("total_amount")
+  shippingAmount   Decimal     @default(0) @db.Decimal(10, 2) @map("shipping_amount")
   discountAmount   Decimal     @default(0) @db.Decimal(10, 2) @map("discount_amount")
   couponCode       String?     @map("coupon_code")
   status           OrderStatus @default(PENDING)
