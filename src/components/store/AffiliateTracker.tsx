@@ -5,21 +5,27 @@ import { useSearchParams } from "next/navigation";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
+const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content"] as const;
+
 export default function AffiliateTracker() {
   const searchParams = useSearchParams();
   const ref = searchParams.get("ref");
 
   useEffect(() => {
+    // Persist UTM params so checkout can attach them to the order
+    for (const key of UTM_KEYS) {
+      const val = searchParams.get(key);
+      if (val) {
+        try { localStorage.setItem(key, val); } catch { /* ignore */ }
+      }
+    }
+
     if (!ref) return;
 
     const upper = ref.toUpperCase();
 
-    // Persist in localStorage for registration flow
-    try {
-      localStorage.setItem("affiliate_ref", upper);
-    } catch { /* ignore */ }
+    try { localStorage.setItem("affiliate_ref", upper); } catch { /* ignore */ }
 
-    // Record click asynchronously
     fetch(`${BASE}/api/track/click`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

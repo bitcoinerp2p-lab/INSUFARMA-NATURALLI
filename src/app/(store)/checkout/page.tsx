@@ -78,7 +78,7 @@ export default function CheckoutPage() {
         const r = await fetch(`${BASE}/api/payments/status/${pixData.paymentId}`);
         if (!r.ok) return;
         const d = await r.json();
-        if (d.status === "approved") { clearInterval(iv); router.push(`/checkout/sucesso?pedido=${d.orderId ?? orderId}`); }
+        if (d.status === "approved") { clearInterval(iv); router.push(`/checkout/sucesso?pedido=${d.orderId ?? orderId}&collection_id=${pixData.paymentId}&collection_status=approved`); }
         if (d.status === "rejected" || d.status === "cancelled") { clearInterval(iv); toast.error("Pagamento não confirmado."); setStep("form"); setPixData(null); }
       } catch { /* ignore */ }
     }, 4000);
@@ -113,6 +113,10 @@ export default function CheckoutPage() {
     setLoading(true);
 
     const affiliateCode = typeof window !== "undefined" ? (localStorage.getItem("affiliate_ref") ?? undefined) : undefined;
+    const utmSource = typeof window !== "undefined" ? (localStorage.getItem("utm_source") ?? undefined) : undefined;
+    const utmMedium = typeof window !== "undefined" ? (localStorage.getItem("utm_medium") ?? undefined) : undefined;
+    const utmCampaign = typeof window !== "undefined" ? (localStorage.getItem("utm_campaign") ?? undefined) : undefined;
+    const utmContent = typeof window !== "undefined" ? (localStorage.getItem("utm_content") ?? undefined) : undefined;
 
     try {
       let oid = orderId;
@@ -121,7 +125,7 @@ export default function CheckoutPage() {
         const or = await fetch(`${BASE}/api/orders`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ addressId: selectedAddr, couponCode: coupon?.code, affiliateCode, items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })) }),
+          body: JSON.stringify({ addressId: selectedAddr, couponCode: coupon?.code, affiliateCode, utmSource, utmMedium, utmCampaign, utmContent, items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })) }),
         });
         const od = await or.json();
         if (!or.ok) { toast.error(od.error ?? "Erro ao criar pedido"); return; }
@@ -130,7 +134,13 @@ export default function CheckoutPage() {
         setOrderId(oid);
         setOrderTotal(capturedTotal);
         clearCart();
-        if (typeof window !== "undefined") localStorage.removeItem("affiliate_ref");
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("affiliate_ref");
+          localStorage.removeItem("utm_source");
+          localStorage.removeItem("utm_medium");
+          localStorage.removeItem("utm_campaign");
+          localStorage.removeItem("utm_content");
+        }
       }
 
       if (selectedPayment === "pix") {

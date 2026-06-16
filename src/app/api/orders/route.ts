@@ -19,6 +19,11 @@ const createOrderSchema = z.object({
   couponCode: z.string().optional(),
   paymentMethod: z.string().optional(),
   affiliateCode: z.string().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  utmContent: z.string().optional(),
+  trafficOrigin: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -74,7 +79,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { addressId, couponCode, paymentMethod, affiliateCode, items } = parsed.data;
+    const {
+      addressId,
+      couponCode,
+      paymentMethod,
+      affiliateCode,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+      utmContent,
+      trafficOrigin,
+      items,
+    } = parsed.data;
 
     // Resolve affiliate: explicit code in body → stored referral on user → null
     let resolvedAffiliateId: string | null = null;
@@ -181,6 +197,11 @@ export async function POST(req: NextRequest) {
           couponCode: resolvedCouponCode,
           paymentMethod: paymentMethod ?? null,
           affiliateId: resolvedAffiliateId,
+          utmSource: utmSource ?? null,
+          utmMedium: utmMedium ?? null,
+          utmCampaign: utmCampaign ?? null,
+          utmContent: utmContent ?? null,
+          trafficOrigin: trafficOrigin ?? null,
           items: {
             create: items.map((item) => {
               const product = productMap.get(item.productId)!;
