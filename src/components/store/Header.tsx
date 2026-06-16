@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { label: "Contato", href: "/contato" },
 ];
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5511999999999";
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5581982488234";
 const whatsappUrl = `https://wa.me/${WHATSAPP}?text=Ol%C3%A1%2C%20gostaria%20de%20mais%20informa%C3%A7%C3%B5es%20sobre%20os%20produtos.`;
 
 interface HeaderProps {

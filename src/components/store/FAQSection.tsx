@@ -41,7 +41,7 @@ const FAQ_ITEMS: FAQItem[] = [
   },
 ];
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5511999999999";
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5581982488234";
 
 export default function FAQSection() {
   return (

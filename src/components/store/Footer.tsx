@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { MapPin, Mail, Phone } from "lucide-react";
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5511999999999";
-const WHATSAPP_FORMATTED = "(11) 99999-9999";
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP ?? "5581982488234";
+const WHATSAPP_FORMATTED = "(81) 98248-8234";
 
 const quickLinks = [
   { label: "Início", href: "/" },
@@ -159,11 +159,11 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:contato@insufarmanaturalli.com.br"
+                  href="mailto:suportetaskium@gmail.com"
                   className="flex items-start gap-2 text-sm text-gray-400 hover:text-brand-gold transition-colors"
                 >
                   <Mail className="w-4 h-4 mt-0.5 flex-shrink-0 text-brand-gold" />
-                  <span>contato@insufarmanaturalli.com.br</span>
+                  <span>suportetaskium@gmail.com</span>
                 </a>
               </li>
               <li className="flex items-start gap-2 text-sm text-gray-400">
@@ -187,7 +187,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
           <p>
             &copy; {currentYear} INSUFARMA NATURALLI. Todos os direitos
-            reservados. CNPJ 43.423.730/0001-08
+            reservados. CNPJ 55.092.320/0001-00
           </p>
           <div className="flex items-center gap-4">
             <Link

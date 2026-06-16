@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5511999999999";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "5581982488234";
 
 const container = {
   hidden: {},
@@ -110,31 +110,76 @@ export default function HeroSection() {
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-              className="relative"
+              className="relative w-[380px] h-[380px]"
             >
+              {/* Leaf 1 — top left floating */}
+              <motion.div
+                animate={{ y: [-6, 6, -6], rotate: [-6, -2, -6] }}
+                transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-2 left-0 opacity-60"
+              >
+                <LeafSVG size={52} />
+              </motion.div>
+
+              {/* Leaf 2 — bottom right floating */}
+              <motion.div
+                animate={{ y: [5, -7, 5], rotate: [8, 13, 8] }}
+                transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.9 }}
+                className="absolute bottom-4 right-2 opacity-40"
+              >
+                <LeafSVG size={38} />
+              </motion.div>
+
+              {/* Leaf 3 — mid right, small */}
+              <motion.div
+                animate={{ y: [0, -5, 0], rotate: [-3, 2, -3] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.8 }}
+                className="absolute top-1/2 right-0 -translate-y-1/2 opacity-30"
+              >
+                <LeafSVG size={28} />
+              </motion.div>
+
+              {/* Particle dots */}
+              {[
+                { top: "15%", left: "15%", delay: 0 },
+                { top: "75%", left: "20%", delay: 0.5 },
+                { top: "20%", right: "18%", delay: 1 },
+                { top: "65%", right: "15%", delay: 1.5 },
+                { top: "45%", left: "5%", delay: 0.8 },
+              ].map((pos, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ opacity: [0.3, 0.8, 0.3], scale: [1, 1.3, 1] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: pos.delay }}
+                  className="absolute w-1.5 h-1.5 rounded-full bg-[#C9A84C]"
+                  style={{ top: pos.top, left: (pos as any).left, right: (pos as any).right }}
+                />
+              ))}
+
               {/* Rotating outer ring */}
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                className="absolute -inset-8 rounded-full border border-[#C9A84C]/12"
+                className="absolute inset-[14px] rounded-full border border-[#C9A84C]/12"
               />
-              {/* Glow */}
-              <div className="absolute inset-0 rounded-3xl bg-[#C9A84C]/8 blur-3xl scale-125" />
 
-              {/* Main card */}
+              {/* Glow */}
+              <div className="absolute inset-[30px] rounded-3xl bg-[#C9A84C]/8 blur-3xl" />
+
+              {/* Main card — centered in the 380px box */}
               <motion.div
-                animate={{ y: [0, -12, 0] }}
+                animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="relative w-72 h-72 rounded-3xl bg-white/6 backdrop-blur-md border border-[#C9A84C]/20 flex items-center justify-center shadow-[0_32px_64px_rgba(0,0,0,0.3)]"
+                className="absolute inset-[40px] rounded-3xl bg-white/6 backdrop-blur-md border border-[#C9A84C]/20 flex items-center justify-center shadow-[0_32px_64px_rgba(0,0,0,0.3)]"
               >
-                <div className="text-center px-8">
-                  <div className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-[#C9A84C]/15 border border-[#C9A84C]/25 flex items-center justify-center">
+                <div className="text-center px-6">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#C9A84C]/15 border border-[#C9A84C]/25 flex items-center justify-center">
                     <BotanicalIcon />
                   </div>
-                  <p className="font-display font-bold text-white text-xl tracking-wide">
+                  <p className="font-display font-bold text-white text-lg tracking-wide">
                     Naturalli
                   </p>
-                  <p className="text-[#C9A84C]/70 text-[13px] mt-1 tracking-[0.06em]">
+                  <p className="text-[#C9A84C]/70 text-[12px] mt-1 tracking-[0.06em]">
                     Premium Supplements
                   </p>
                 </div>
@@ -145,7 +190,7 @@ export default function HeroSection() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.9, duration: 0.5 }}
-                className="absolute -right-6 top-8 bg-white rounded-2xl px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
+                className="absolute -right-4 top-14 bg-white rounded-2xl px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
               >
                 <p className="text-[#8B0000] font-bold text-lg leading-none">5★</p>
                 <p className="text-[#9a9a9a] text-[11px] mt-0.5">Avaliação</p>
@@ -156,10 +201,22 @@ export default function HeroSection() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.1, duration: 0.5 }}
-                className="absolute -left-6 bottom-12 bg-white rounded-2xl px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
+                className="absolute -left-4 bottom-16 bg-white rounded-2xl px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.2)]"
               >
                 <p className="text-[#8B0000] font-bold text-lg leading-none">10k+</p>
                 <p className="text-[#9a9a9a] text-[11px] mt-0.5">Clientes</p>
+              </motion.div>
+
+              {/* Badge ANVISA */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.3, duration: 0.5 }}
+                className="absolute left-1/2 -translate-x-1/2 -bottom-3 bg-[#C9A84C] rounded-xl px-4 py-2 shadow-[0_4px_16px_rgba(201,168,76,0.4)]"
+              >
+                <p className="text-[#1a1a1a] font-bold text-[11px] tracking-[0.08em] uppercase whitespace-nowrap">
+                  ✓ ANVISA Registrado
+                </p>
               </motion.div>
             </motion.div>
           </div>
@@ -190,6 +247,33 @@ function Stat({ value, label }: { value: string; label: string }) {
       <p className="text-[#C9A84C] font-bold text-2xl leading-none">{value}</p>
       <p className="text-white/50 text-xs mt-1 tracking-wide">{label}</p>
     </div>
+  );
+}
+
+function LeafSVG({ size }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M8 40C8 40 10 20 24 12C38 4 42 8 42 8C42 8 40 28 26 36C12 44 8 40 8 40Z"
+        fill="#C9A84C"
+        fillOpacity="0.25"
+        stroke="#C9A84C"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8 40C8 40 18 30 24 20"
+        stroke="#C9A84C"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
