@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [total, sales] = await Promise.all([
+    const [total, rawSales] = await Promise.all([
       prisma.sale.count({ where }),
       prisma.sale.findMany({
         where,
@@ -39,6 +39,19 @@ export async function GET(req: NextRequest) {
         },
       }),
     ]);
+
+    const sales = rawSales.map((s) => ({
+      id: s.id,
+      product: s.product.name,
+      customer: s.customerName ?? s.customerEmail ?? "—",
+      affiliate: s.affiliate?.name ?? null,
+      coupon: s.couponCode,
+      grossAmount: Number(s.grossAmount),
+      netAmount: Number(s.netAmount),
+      commission: Number(s.affiliateAmount),
+      utmSource: s.utmSource,
+      createdAt: s.createdAt.toISOString(),
+    }));
 
     return NextResponse.json({ sales, total, page, limit });
   } catch (err) {

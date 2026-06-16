@@ -41,8 +41,8 @@ export default function VendasPage() {
     try {
       const params = new URLSearchParams({ period, page: String(page), limit: String(PAGE_SIZE) });
       if (period === "custom" && dateFrom && dateTo) {
-        params.set("from", dateFrom);
-        params.set("to", dateTo);
+        params.set("startDate", dateFrom);
+        params.set("endDate", dateTo);
       }
       const res = await fetch(`${BASE}/api/admin/sales?${params}`);
       if (!res.ok) throw new Error("Falha ao carregar vendas");
